@@ -1,0 +1,14 @@
+PlanMark CAD/BIM viewer - third-party components (loaded only when a CAD or IFC file is opened)
+
+dxf-parser 1.1.2 ............ MIT License - https://github.com/gdsestimating/dxf-parser
+@mlightcad/libredwg-web 0.9.3  GPL-3.0 - JavaScript/WebAssembly build of GNU LibreDWG
+                                https://github.com/mlightcad/libredwg-web  (LibreDWG: https://www.gnu.org/software/libredwg/)
+                                Full license text: LibreDWG-GPL-3.0.txt (in this folder)
+three.js 0.170.0 ............ MIT License - https://threejs.org (OrbitControls from three/examples, MIT)
+web-ifc 0.0.80 .............. Mozilla Public License 2.0 - https://github.com/ThatOpen/engine_web-ifc
+
+AutoCAD Color Index table derived from dxf-parser (MIT).
+
+Note on GPL-3.0: the DWG reader is GPL-licensed. Using PlanMark inside your own company is fine.
+If PlanMark is ever sold or distributed to other companies, the GPL's source-code obligations apply
+(or the DWG reader must be removed / replaced with a commercially licensed one, e.g. ODA Drawings SDK).
