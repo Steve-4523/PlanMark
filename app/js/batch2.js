@@ -86,7 +86,16 @@ window.PMSecurity={encryptBytes,decryptBytes};
 const PAPERS={Letter:[8.5,11],Legal:[8.5,14],Tabloid:[11,17],'ARCH A':[9,12],'ARCH B':[12,18],'ARCH C':[18,24],'ARCH D':[24,36],'ARCH E':[36,48],'ANSI C':[17,22],'ANSI D':[22,34],'ANSI E':[34,44],A4:[8.27,11.69],A3:[11.69,16.54],A1:[23.39,33.11],A0:[33.11,46.81]};
 function parseRangeN(t,N){t=String(t||'').trim().toLowerCase();if(!t||t==='all')return Array.from({length:N},(_,i)=>i+1);const out=new Set();
  for(const part of t.split(',')){const m=part.trim().match(/^(\d+)(?:\s*-\s*(\d+|end))?$/);if(!m)continue;let a=+m[1],b=m[2]==='end'?N:+(m[2]||m[1]);if(a>b)[a,b]=[b,a];for(let i=a;i<=b;i++)if(i>=1&&i<=N)out.add(i)}return[...out].sort((a,b)=>a-b)}
-const loadDoc=b=>PDFLib.PDFDocument.load(b,{ignoreEncryption:true});
+// Batch operations change the visible pages. A PlanMark-saved file also carries its pre-markup original and the
+// editable markups as attachments; left in place, reopening the output would show that stale original instead of
+// the batch result. So they're removed and the output reopens exactly as processed (markups come back from the
+// file's annotations).
+function stripPlanMarkData(doc){try{const {PDFName,PDFArray,PDFDict}=PDFLib;const names=doc.catalog.lookup(PDFName.of('Names'),PDFDict);if(!names)return doc;
+ const ef=names.lookup(PDFName.of('EmbeddedFiles'),PDFDict);if(!ef)return doc;
+ const prune=node=>{const arr=node.lookup(PDFName.of('Names'),PDFArray);if(arr){const keep=[];for(let i=0;i<arr.size();i+=2){const k=arr.lookup(i);const nm=k&&k.decodeText?k.decodeText():String(k&&k.value||'');if(!/^planmark-(original\.pdf|markups\.json)$/.test(nm))keep.push(arr.get(i),arr.get(i+1))}
+   node.set(PDFName.of('Names'),doc.context.obj(keep))}const kids=node.lookup(PDFName.of('Kids'),PDFArray);if(kids)for(let i=0;i<kids.size();i++){const k=kids.lookup(i,PDFDict);if(k)prune(k)}};
+ prune(ef)}catch(e){}return doc}
+const loadDoc=async b=>stripPlanMarkData(await PDFLib.PDFDocument.load(b,{ignoreEncryption:true}));
 const saved=async d=>new Uint8Array(await d.save());
 async function opHF(f,o,st){const doc=await loadDoc(f.bytes),font=await doc.embedFont(PDFLib.StandardFonts.Helvetica),pages=doc.getPages(),N=pages.length,rng=new Set(parseRangeN(o.range,N));
  const col=hexRgb(o.color||'#000000'),sz=+o.size||9,m=inch(o.margin??0.5);
@@ -206,6 +215,17 @@ async function runBatch(op,o,files){const def=OPS[op],pg=progress(def.label);con
    try{out.push(...await def.run(f,o,st,pg))}catch(e){console.error(e);pg.log(`✗ ${f.name}: ${e.message||e}`)}await tickb()}
   pg.bar(1);const cancelled=pg.cancelled;pg.done();if(cancelled)toast('Cancelled');if(out.length)await deliver(out,'batch-'+op+'.zip');B2.lastBatch={op,out};return out}
  catch(e){console.error(e);pg.done();toast('Batch failed: '+(e.message||e));return[]}}
+/* Headers/footers and stamps only add content, so a PlanMark-saved file stays editable: the same operation is also
+   applied to its embedded original, and the editable markups are carried over unchanged. Operations that move or
+   remove content (rotate, crop, split, flatten…) output the processed pages only. */
+for(const k of ['hf','stamp']){const op=OPS[k];if(!op||op._pmKeep)continue;const run=op.run;op._pmKeep=true;
+ op.run=async(f,o,st,...rest)=>{const pm=await readPM(f.bytes,f.name);if(!pm.embedded)return run(f,o,st,...rest);
+  const st2=st?JSON.parse(JSON.stringify(st)):st;const orig=await run({name:f.name,bytes:pm.orig},o,st2,...rest);const outs=await run(f,o,st,...rest);
+  if(outs.length!==1||orig.length!==1)return outs;
+  const d=await PDFLib.PDFDocument.load(outs[0].bytes,{ignoreEncryption:true,updateMetadata:false});
+  await d.attach(orig[0].bytes,'planmark-original.pdf',{mimeType:'application/pdf',description:'Original PDF (PlanMark)'});
+  await d.attach(new TextEncoder().encode(JSON.stringify({markups:pm.markups,scales:pm.scales})),'planmark-markups.json',{mimeType:'application/json',description:'Editable markups (PlanMark)'});
+  return[{name:outs[0].name,bytes:new Uint8Array(await d.save())}]}}
 window.PMBatch2={OPS,runBatch,batchFilesDialog,flattenBytes,readPM,deliver,printBytes,parseRangeN,viewSize,v2p,B2};
 /* ---------- compare / overlay depth ---------- */
 async function renderGray(pdf,n,k,W,Hh,M){const pg=await pdf.getPage(n),vp=pg.getViewport({scale:k}),c=document.createElement('canvas');c.width=W||Math.ceil(vp.width);c.height=Hh||Math.ceil(vp.height);

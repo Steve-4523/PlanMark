@@ -374,6 +374,7 @@ function buildCmds(){const c=(id,menu,label,key,run,o={})=>Object.assign({id,men
  c('t:dfill','Tools','Dynamic Fill','J',need(()=>setTool('dfill',{lock:true}))),c('t:measure','Tools','Measure (length)','',need(()=>setTool('length'))),c('t:autocount','Tools','AutoCount…','',need(()=>PMAuto.autoCount())),c('t:snap','Tools','Snapshot','G',()=>runRib('Snapshot')),c('t:attach','Tools','Attach photo / file to markup','F',needSel(()=>window.PMCapture?PMCapture.attachFiles(sel()[0]):toast('Not available'))),
  c('t:max','Tools','Max tools…','',()=>runRib('Max')),c('t:ai','Tools','AI drawing review…','',need(()=>PMAuto.aiReview())),c('t:sets','Tools','Sets','',()=>panelTab('sets')),c('t:studio','Tools','Studio sessions','',()=>panelTab('studio')),c('t:chest','Tools','Tool Chest','',()=>panelTab('chest')),c('t:report','Tools','Reports…','',()=>runRib('Report')),
  c('h:keys','Help','Keyboard shortcuts','',shortcutSheet),c('h:new',"Help","What's new",'',()=>banner(true)),c('h:about','Help','About PlanMark','',about)];
+ for(const k of Object.keys(window).filter(k=>/^PM_EXTRA_CMDS/.test(k)&&typeof window[k]==='function'))for(const x of window[k]())list.push(c(x.id,x.menu,x.label,x.key,x.run,x));
  for(const k of Object.keys(TOOLKEYS))if(T[k])list.push(toolCmd(k,TOOLKEYS[k]));
  for(const k of Object.keys(T))if(!TOOLKEYS.hasOwnProperty(k)&&T[k].kind!=='nav'&&!['calibrate','dfill','legend','vpcal'].includes(k))list.push(toolCmd(k,''));
  for(let d=1;d<=9;d++)list.push(c('status'+d,'Edit','Status key '+d,String(d),()=>statusKey(d),{hidden:1}));
@@ -441,7 +442,7 @@ function tbDialog(){const rb=$('#ribbon');if(!rb)return;const groups=[...rb.quer
 function prefDefs(){const sn=window.PMSnap||{},vw=V();const sp=(k,v)=>{P[k]=v;saveP()};
  return[
  {s:'General',l:'Author name (shown on your markups)',t:'text',g:()=>settings.author,v:x=>{settings.author=x||'User';LS.set('pm:settings',settings)}},
- {s:'General',l:'Language',t:'select',o:[['en','English']],g:()=>P.language,v:x=>sp('language',x),h:'More languages later'},
+ {s:'General',l:'Language',t:'select',o:window.PM_LANGS||[['en','English']],g:()=>P.language,v:x=>{sp('language',x);hook('prefs')}},
  {s:'General',l:'Keyboard shortcut set',t:'select',o:[['bluebeam','Bluebeam-style (single letters for tools)'],['classic','PlanMark classic']],g:()=>P.shortcutSet,v:x=>sp('shortcutSet',x)},
  {s:'General',l:'Show menu bar (F9)',t:'bool',g:()=>P.menu,v:x=>sp('menu',x)},
  {s:'General',l:"Show what's new after updates",t:'bool',g:()=>P.banners,v:x=>sp('banners',x)},
@@ -477,7 +478,7 @@ function prefDefs(){const sn=window.PMSnap||{},vw=V();const sp=(k,v)=>{P[k]=v;sa
  {s:'Markups',l:'View mode (no editing; clicks select and follow links)',t:'bool',g:()=>P.viewMode,v:x=>{sp('viewMode',x);if(x)setTool('select')}},
  ...[1,2,3,4,5,6,7,8,9].map(d=>({s:'Status keys',l:`Number key ${d} sets status`,t:'select',o:[['','(nothing)'],...(((window.PMListPro&&PMListPro.LP.statuses)||[]).map(x=>[x.name,x.name]))],g:()=>P.statusKeys[d]||'',v:x=>{P.statusKeys[d]=x;saveP()}})),
  {s:'Keyboard',l:'Edit keyboard shortcuts…',t:'button',run:shortcutEditor},{s:'Keyboard',l:'Markup editing shortcuts (lock, group, painter)…',t:'button',run:()=>window.PMListPro&&PMListPro.shortcutsDialog()},
- {s:'Toolbars',l:'Customize toolbars…',t:'button',run:tbDialog},{s:'Workspace',l:'Panels & profiles…',t:'button',run:()=>runRib('View')},{s:'Workspace',l:'Display options…',t:'button',run:()=>runRib('Display')},{s:'Account',l:'Account & sync…',t:'button',run:()=>{const b=$('#bAcct');if(b)b.click()}}]}
+ {s:'Toolbars',l:'Customize toolbars…',t:'button',run:tbDialog},{s:'Workspace',l:'Panels & profiles…',t:'button',run:()=>runRib('View')},{s:'Workspace',l:'Display options…',t:'button',run:()=>runRib('Display')},{s:'Account',l:'Account & sync…',t:'button',run:()=>{const b=$('#bAcct');if(b)b.click()}},...Object.keys(window).filter(k=>/^PM_EXTRA_PREFS/.test(k)&&typeof window[k]==='function').flatMap(k=>{try{return window[k]()}catch(e){return[]}})]}
 function prefsDialog(){const defs=prefDefs();const row=(d,i)=>{const id='wsp'+i;let ctl='';
  if(d.t==='bool')ctl=`<input type="checkbox" id="${id}" ${d.g()?'checked':''}>`;else if(d.t==='select')ctl=`<select class="ti" id="${id}" style="max-width:210px">${d.o.map(([v,l])=>`<option value="${esc(v)}" ${String(d.g())===String(v)?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
  else if(d.t==='number')ctl=`<input class="ti" type="number" id="${id}" value="${d.g()}" ${d.min!=null?'min="'+d.min+'"':''} ${d.max!=null?'max="'+d.max+'"':''} step="${d.step||1}" style="width:90px">`;else if(d.t==='color')ctl=`<input type="color" id="${id}" value="${d.g()}" style="width:60px">`;else if(d.t==='text')ctl=`<input class="ti" id="${id}" value="${esc(d.g())}" style="width:180px">`;else ctl=`<button class="btn" id="${id}" style="border:1px solid var(--line)">Open</button>`;
@@ -542,6 +543,7 @@ H.ready.push(()=>{setTimeout(()=>{installWrappers();buildCmds();buildMenu();appl
  decorateThumbs();banner(false);if(P.showFiles)switchTab('files');if(P.reopenLast&&!S.pages.length)reopenSession();
  if(P.spellUnderline)setTimeout(()=>loadDict().then(()=>redrawAll()).catch(()=>{}),3000)},0)});
 window.addEventListener('beforeunload',rememberSession);
-window.PMWorkspace={P,TB,get CMDS(){return CMDS},buildCmds,menuItems,ctx,markupMenu,pageMenu,thumbMenu,tabMenu,present,prefsDialog,tbDialog,shortcutSheet,shortcutEditor,about,banner,cycleSel,pasteInPlace,pasteAt,align,alignSize,centerInDoc,roundDialog,
+function addDictWord(w){const d=LS.get('pm:ws:dict',[]);d.push(String(w).toLowerCase());LS.set('pm:ws:dict',[...new Set(d)]);if(WS.dict)WS.dict.add(String(w).toLowerCase())}
+window.PMWorkspace={loadDict,okWord,suggest,misspelled,addDictWord,P,TB,get CMDS(){return CMDS},buildCmds,menuItems,ctx,markupMenu,pageMenu,thumbMenu,tabMenu,present,prefsDialog,tbDialog,shortcutSheet,shortcutEditor,about,banner,cycleSel,pasteInPlace,pasteAt,align,alignSize,centerInDoc,roundDialog,
  renderHistory,jumpHistory,renderLinks,scanLinks,LK,renderFlags,movePageTo,copyPageImage,docProps,refresh,reloadDoc,statusKey,spellDialog,geomPts,keyOf,comboOf,applyPrefs,decorateThumbs};
 })();

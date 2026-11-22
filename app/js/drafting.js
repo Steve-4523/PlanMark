@@ -76,6 +76,7 @@ body.dl #dlPHead{display:flex;align-items:center;gap:6px;height:40px;padding:0 1
 body.dl #dlPHead .car{font-size:11px;color:var(--mut)}
 body.dl #dlGrip{position:absolute;top:0;right:-3px;bottom:0;width:6px;cursor:ew-resize;z-index:3}
 body.dl #dlPanes .pane{flex:1;min-height:0}
+body.dl #pane-pages.hide{display:none}
 /* thumbnails in a grid, with page number and scale */
 body.dl #pane-pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));align-content:start;gap:14px 12px;padding:10px 12px}
 body.dl #pane-pages>:not(.thumb){grid-column:1/-1}

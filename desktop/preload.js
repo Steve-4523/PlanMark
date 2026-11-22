@@ -1,6 +1,6 @@
 'use strict';
 // Exposes a minimal, safe desktop API to the page as window.pmDesktop.
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 let version = '';
 try { version = ipcRenderer.sendSync('pm:version') || ''; } catch (_) { /* ignore */ }
@@ -39,6 +39,14 @@ contextBridge.exposeInMainWorld('pmDesktop', {
   /** Send an RFC 3161 time-stamp query; resolves the DER response bytes. */
   tsaRequest(url, query) { return ipcRenderer.invoke('pm:tsa', url, query); },
   /** Open a new PlanMark window, optionally showing a document ({name, bytes}). */
+  /** Full path of a File picked in an <input type=file> ('' if unknown). */
+  pathForFile(file) { try { return webUtils.getPathForFile(file) || ''; } catch (_) { return ''; } },
+  /** File locks: check / take / release the "~$name.pmlock" owner file next to a PDF. */
+  lockCheck(p) { return ipcRenderer.invoke('pm:lock-check', p); },
+  lockAcquire(p, user) { return ipcRenderer.invoke('pm:lock-acquire', p, user); },
+  lockRelease(p) { return ipcRenderer.invoke('pm:lock-release', p); },
+  /** Email a PDF: {name, bytes, to, subject, body} → {method:'outlook'|'mailto', path}. */
+  emailFile(o) { return ipcRenderer.invoke('pm:email', { name: o && o.name, bytes: o && o.bytes, to: o && o.to, subject: o && o.subject, body: o && o.body }); },
   newWindow(file) { return ipcRenderer.invoke('pm:new-window', file ? { name: file.name, bytes: file.bytes } : null); },
   /**
    * Register a handler for PDFs opened via "Open with", the command line, or a
@@ -52,7 +60,7 @@ contextBridge.exposeInMainWorld('pmDesktop', {
     if (!listening) {
       listening = true;
       ipcRenderer.on('pm:open-file', (_event, file) => {
-        const payload = { name: String(file && file.name || 'document.pdf'), bytes: toUint8(file && file.bytes) };
+        const payload = { name: String(file && file.name || 'document.pdf'), bytes: toUint8(file && file.bytes), path: String(file && file.path || '') };
         for (const fn of callbacks) {
           try { fn(payload); } catch (err) { console.error('pmDesktop.onOpenFile callback failed', err); }
         }

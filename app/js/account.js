@@ -2,7 +2,8 @@
    Desktop app: the same Olympia account as the portal (app.olympiaholdings.com); settings in the portal database's planmark_settings table.
    Web version on claude.ai: your Claude account; settings saved privately in this artifact's storage. */
 (function(){
-const SYNC_KEYS=[...new Set(['pm:settings','pm:defaults','pm:chest','pm:recent','pm:snapopts','pm:layout','pm:profiles','pm:sigs','pm:cols','pm:statuses','pm:filters','pm:keys',...(window.PM_EXTRA_SYNC_KEYS||[]),...(window.PM_EXTRA_SYNC_KEYS2||[]),...['PDFEDIT','WS','TO','ST','B2','CL'].flatMap(k=>window['PM_EXTRA_SYNC_KEYS_'+k]||[])])];
+const SYNC_KEYS=[...new Set(['pm:settings','pm:defaults','pm:chest','pm:recent','pm:snapopts','pm:layout','pm:profiles','pm:sigs','pm:cols','pm:statuses','pm:filters','pm:keys',...(window.PM_EXTRA_SYNC_KEYS||[]),...(window.PM_EXTRA_SYNC_KEYS2||[]),...['PDFEDIT','WS','TO','ST','B2','CL','FM','LK','CP','DC'].flatMap(k=>window['PM_EXTRA_SYNC_KEYS_'+k]||[])])];
+H.ready.unshift(()=>{for(const k of Object.keys(window))if(/^PM_EXTRA_SYNC_KEYS/.test(k)&&Array.isArray(window[k]))for(const x of window[k])if(!SYNC_KEYS.includes(x))SYNC_KEYS.push(x)});
 const AC={provider:null,user:null,cfg:null,applying:false,tok:null,tokExp:0,status:'',remoteUnsub:null};
 const _set=LS.set.bind(LS);
 LS.set=function(k,v){_set(k,v);if(!AC.applying&&SYNC_KEYS.includes(k)){_set('pm:sync:at',Date.now());schedulePush()}};

@@ -7,6 +7,8 @@
 const { app, BrowserWindow, protocol, session, shell, dialog, ipcMain, Menu, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const { execFile, spawn } = require('child_process');
 const updater = require('./updater');
 
 const SCHEME = 'app';
@@ -136,7 +138,7 @@ function flushFiles() {
   if (!mainWindow || mainWindow.isDestroyed() || !rendererReady) return;
   while (pendingFiles.length) {
     const f = pendingFiles.shift();
-    mainWindow.webContents.send('pm:open-file', { name: f.name, bytes: f.bytes });
+    mainWindow.webContents.send('pm:open-file', { name: f.name, bytes: f.bytes, path: f.path || '' });
   }
 }
 
@@ -146,6 +148,77 @@ function focusMainWindow() {
   mainWindow.show();
   mainWindow.focus();
 }
+
+// ---------------------------------------------------------------------------
+// Web tabs (<webview>): no preload, no Node, sandboxed, web pages only; links that open new windows stay in the tab.
+app.on('web-contents-created', (_e, wc) => {
+  wc.on('will-attach-webview', (event, webPreferences, params) => {
+    delete webPreferences.preload;
+    webPreferences.nodeIntegration = false;
+    webPreferences.contextIsolation = true;
+    webPreferences.sandbox = true;
+    if (!/^(https?:|about:blank)/i.test(params.src || '')) event.preventDefault();
+  });
+  if (wc.getType && wc.getType() === 'webview') {
+    wc.setWindowOpenHandler(({ url }) => { if (/^https?:/i.test(url)) wc.loadURL(url); return { action: 'deny' }; });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// File locks: "~$<name>.pmlock" next to a PDF while it is open in PlanMark (like Office's owner files).
+const heldLocks = new Set();
+function lockFile(p) { return path.join(path.dirname(p), '~$' + path.basename(p) + '.pmlock'); }
+function okPdf(p) { try { return typeof p === 'string' && /\.pdf$/i.test(p) && path.isAbsolute(p) && fs.statSync(p).isFile(); } catch (_) { return false; } }
+function pidAlive(pid) { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } }
+function readLock(p) {
+  const lf = lockFile(p);
+  let L;
+  try { L = JSON.parse(fs.readFileSync(lf, 'utf8')); } catch (_) { return null; }
+  const host = os.hostname();
+  L.mine = L.computer === host && L.pid === process.pid;
+  L.stale = !L.time || Date.now() - L.time > 24 * 3600 * 1000 || (L.computer === host && L.pid !== process.pid && !pidAlive(L.pid));
+  return L;
+}
+ipcMain.handle('pm:lock-check', (_e, p) => (okPdf(p) ? readLock(p) : null));
+ipcMain.handle('pm:lock-acquire', (_e, p, user) => {
+  if (!okPdf(p)) return { ok: false, reason: 'not a PDF on disk' };
+  const L = { app: 'PlanMark', user: String(user || os.userInfo().username || 'Someone').slice(0, 80), computer: os.hostname(), pid: process.pid, time: Date.now() };
+  try { fs.writeFileSync(lockFile(p), JSON.stringify(L)); heldLocks.add(p); return { ok: true }; } catch (err) { return { ok: false, reason: err.message }; }
+});
+function releaseLock(p) { const L = readLock(p); if (L && L.mine) { try { fs.unlinkSync(lockFile(p)); } catch (_) {} } heldLocks.delete(p); }
+ipcMain.handle('pm:lock-release', (_e, p) => { if (typeof p === 'string') releaseLock(p); return true; });
+app.on('will-quit', () => { for (const p of [...heldLocks]) releaseLock(p); });
+
+// ---------------------------------------------------------------------------
+// Email: Outlook (classic) can be started with an attachment; otherwise open the mail app and show the file.
+function findOutlook() {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') return resolve(null);
+    execFile('reg', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\OUTLOOK.EXE', '/ve'], { windowsHide: true }, (err, out) => {
+      if (err) return resolve(null);
+      const m = String(out).match(/REG_SZ\s+(.+\.exe)/i);
+      const exe = m && m[1].trim().replace(/^"|"$/g, '');
+      resolve(exe && fs.existsSync(exe) ? exe : null);
+    });
+  });
+}
+ipcMain.handle('pm:email', async (_e, o = {}) => {
+  const dir = path.join(os.tmpdir(), 'PlanMark-email');
+  fs.mkdirSync(dir, { recursive: true });
+  const name = String(o.name || 'document.pdf').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 150);
+  const file = path.join(dir, name);
+  fs.writeFileSync(file, Buffer.from(o.bytes || []));
+  const enc = encodeURIComponent;
+  const q = `subject=${enc(o.subject || '')}&body=${enc(o.body || '')}`;
+  const testing = !!process.env.PM_TEST_NO_EXTERNAL;
+  const outlook = await findOutlook();
+  if (outlook) {
+    if (!testing) spawn(outlook, ['/c', 'ipm.note', '/m', `${o.to || ''}?${q}`, '/a', file], { detached: true, stdio: 'ignore', windowsHide: false }).unref();
+    return { method: 'outlook', path: file };
+  }
+  if (!testing) { shell.showItemInFolder(file); await shell.openExternal(`mailto:${o.to || ''}?${q}`); }
+  return { method: 'mailto', path: file };
+});
 
 ipcMain.on('pm:version', (e) => { e.returnValue = app.getVersion(); });
 ipcMain.on('pm:web-version', (e) => { e.returnValue = updater.currentVersion(); });
@@ -243,6 +316,7 @@ function createWindow(extra) {
       nodeIntegration: false,
       sandbox: true,
       spellcheck: false,
+      webviewTag: true,
     },
   });
 

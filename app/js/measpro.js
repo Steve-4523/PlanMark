@@ -270,99 +270,13 @@ H.down=(prev=>(e,p,pt)=>{if(S.tool==='image'&&p&&(sigPending||snapPending)&&S.im
 /* =====================================================================================
    9. Forms — fill existing AcroForm fields, create new ones, auto-detect blanks
    ===================================================================================== */
-const FM={fields:[],byName:{},loaded:false};let formShow=ls('pm:formshow',true);
-const FS=()=>{S.scales.forms=S.scales.forms||{values:{},created:[],flatten:false};S.scales.forms.values=S.scales.forms.values||{};S.scales.forms.created=S.scales.forms.created||[];return S.scales.forms};
-async function loadFields(){FM.fields=[];FM.byName={};FM.loaded=false;const doc=S.pdf;if(!doc)return;
- for(const p of S.pages){let an=[];try{an=await(await doc.getPage(p.num)).getAnnotations()}catch(e){}if(doc!==S.pdf)return;
-  for(const a of an){if(a.subtype!=='Widget'||!a.fieldName)continue;const r=p.vp.convertToViewportRectangle(a.rect),box=normBox([r[0],r[1]],[r[2],r[3]]);
-   const kind=a.fieldType==='Tx'?'text':a.fieldType==='Sig'?'signature':a.fieldType==='Ch'?(a.combo?'dropdown':'list'):a.checkBox?'checkbox':a.radioButton?'radio':'button';
-   let f=FM.byName[a.fieldName];if(!f){f=FM.byName[a.fieldName]={name:a.fieldName,kind,widgets:[],options:(a.options||[]).map(o=>o.displayValue??o.exportValue),value:kind==='checkbox'?(a.fieldValue&&a.fieldValue!=='Off'):kind==='radio'?(a.fieldValue&&a.fieldValue!=='Off'?a.fieldValue:''):(Array.isArray(a.fieldValue)?a.fieldValue[0]:(a.fieldValue||'')),readOnly:!!a.readOnly,multiline:!!a.multiLine};FM.fields.push(f)}
-   f.widgets.push({page:p.num,box,exportValue:a.exportValue||a.buttonValue||''})}}
- FM.loaded=true;renderForms();redrawAll()}
-const valOf=f=>{const v=FS().values;return f.name in v?v[f.name]:f.value};
-function allFields(){return[...FM.fields.map(f=>({f,created:false})),...FS().created.map(c=>({f:Object.assign({widgets:[{page:c.page,box:c.box}],value:c.kind==='checkbox'?false:''},c),created:true}))]}
-function fieldAt(pg,pt){if(!formShow||!pt)return null;for(const{f}of allFields())for(const w of f.widgets)if(w.page===pg&&pt[0]>=w.box[0]&&pt[0]<=w.box[2]&&pt[1]>=w.box[1]&&pt[1]<=w.box[3])return Object.assign({},f,{_w:w});return null}
-function setVal(name,v){FS().values[name]=v;saveScales();hook('change');redrawAll();renderForms()}
-function editField(f){if(f.readOnly){toast('That field is read-only');return}
- if(f.kind==='checkbox')return setVal(f.name,!valOf(f));if(f.kind==='radio')return setVal(f.name,f._w&&f._w.exportValue||'');
- if(f.kind==='dropdown'||f.kind==='list'){modal(f.name,`<select class="ti" id="fdV">${['',...(f.options||[])].map(o=>`<option ${o===valOf(f)?'selected':''}>${esc(o)}</option>`).join('')}</select>`,[{label:'Cancel',cancel:1},{label:'OK',pri:1,fn:md=>setVal(f.name,md.querySelector('#fdV').value)}]);return}
- if(f.kind==='signature'){toast('Use Sign & Seal to place a signature here');return}
- modal(f.name,`<${f.multiline?'textarea':'input'} class="ti" id="fdV" ${f.kind==='date'?'type="date"':''}>${f.multiline?esc(valOf(f)||''):''}${f.multiline?'</textarea>':''}`,[{label:'Cancel',cancel:1},{label:'OK',pri:1,fn:md=>setVal(f.name,md.querySelector('#fdV').value)}]);
- if(!f.multiline)$('#fdV').value=valOf(f)||''}
-H.over.push(n=>{if(!formShow)return'';let h='';const k=1/S.zoom;for(const{f,created}of allFields())for(const w of f.widgets){if(w.page!==n)continue;const b=w.box,v=valOf(f),hgt=b[3]-b[1];
-  h+=`<rect x="${b[0]}" y="${b[1]}" width="${b[2]-b[0]}" height="${hgt}" fill="#3b82f6" fill-opacity=".1" stroke="#3b82f6" stroke-opacity=".6" stroke-width="${k}" ${created?`stroke-dasharray="${4*k} ${3*k}"`:''} pointer-events="none"/>`;
-  if(f.kind==='checkbox'&&v)h+=`<path d="M${b[0]+hgt*.2} ${b[1]+hgt*.55} L${b[0]+hgt*.42} ${b[1]+hgt*.78} L${b[0]+hgt*.82} ${b[1]+hgt*.22}" stroke="#1d4ed8" stroke-width="${Math.max(1,hgt*.12)}" fill="none" pointer-events="none"/>`;
-  else if(f.kind==='radio'&&v&&v===w.exportValue)h+=`<circle cx="${(b[0]+b[2])/2}" cy="${(b[1]+b[3])/2}" r="${hgt*.25}" fill="#1d4ed8" pointer-events="none"/>`;
-  else if(v&&typeof v==='string'){const fs=Math.min(11,hgt*.7);h+=`<text x="${b[0]+2}" y="${(b[1]+b[3])/2}" font-size="${fs}" dominant-baseline="central" fill="#1e3a8a" font-family="Helvetica,Arial" pointer-events="none">${esc(v.slice(0,200))}</text>`}
-  if(created)h+=`<text x="${b[0]}" y="${b[1]-2*k}" font-size="${8*k}" fill="#2563eb" font-family="Helvetica,Arial" pointer-events="none">${esc(f.name)}</text>`}return h});
-function fieldDialog(pg,box,existing){const c=existing;
- modal(c?'Edit form field':'New form field',`<div class="row fld"><div><label style="font-size:11px;color:var(--mut)">Type</label><select class="ti" id="ffT">${[['text','Text'],['multiline','Multi-line text'],['checkbox','Checkbox'],['dropdown','Dropdown'],['date','Date'],['signature','Signature']].map(([v,l])=>`<option value="${v}" ${c&&c.kind===v?'selected':''}>${l}</option>`).join('')}</select></div>
- <div><label style="font-size:11px;color:var(--mut)">Name</label><input class="ti" id="ffN" value="${esc(c?c.name:'Field'+(FS().created.length+1))}"></div></div>
- <div class="fld"><label>Dropdown options (comma separated)</label><input class="ti" id="ffO" value="${esc(c&&c.options?c.options.join(', '):'')}"></div>
- <div class="hint">Signature fields are real signature fields in the saved PDF, ready for a certificate-based signing app.</div>`,
- [{label:'Cancel',cancel:1},...(c?[{label:'Delete',fn:()=>{const F=FS();F.created=F.created.filter(x=>x!==c);delete F.values[c.name];saveScales();commit();renderForms()}}]:[]),{label:c?'Save':'Add field',pri:1,fn:md=>{let name=md.querySelector('#ffN').value.trim().replace(/[.\s]+/g,'_')||'Field';
-  const taken=new Set([...FM.fields.map(f=>f.name),...FS().created.filter(x=>x!==c).map(x=>x.name)]);let nn=name,i=2;while(taken.has(nn))nn=name+'_'+i++;
-  let kind=md.querySelector('#ffT').value,ml=false;if(kind==='multiline'){kind='text';ml=true}const opts=md.querySelector('#ffO').value.split(',').map(s=>s.trim()).filter(Boolean);
-  if(c){if(c.name!==nn&&c.name in FS().values){FS().values[nn]=FS().values[c.name];delete FS().values[c.name]}Object.assign(c,{name:nn,kind,multiline:ml,options:opts})}else FS().created.push({id:uid(),name:nn,kind,multiline:ml,options:opts,page:pg,box});
-  saveScales();commit();renderForms();switchTab('forms')}}])}
-/* auto-detect blanks on static forms: underlines and empty boxes in the drawing's vector geometry */
-async function vectorLines(n){const page=await S.pdf.getPage(n),ol=await page.getOperatorList({annotationMode:pdfjsLib.AnnotationMode?pdfjsLib.AnnotationMode.DISABLE:0}),O=pdfjsLib.OPS,vp=S.pages[n-1].vp;let ctm=vp.transform.slice();const st=[],segs=[],rects=[];
- const mul=(a,b)=>[a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]],ap=(x,y)=>[ctm[0]*x+ctm[2]*y+ctm[4],ctm[1]*x+ctm[3]*y+ctm[5]];
- for(let i=0;i<ol.fnArray.length;i++){const fn=ol.fnArray[i],a=ol.argsArray[i];if(fn===O.save)st.push(ctm.slice());else if(fn===O.restore)ctm=st.pop()||ctm;else if(fn===O.transform)ctm=mul(ctm,a);
-  else if(fn===O.paintFormXObjectBegin){st.push(ctm.slice());if(a&&a[0])ctm=mul(ctm,a[0])}else if(fn===O.paintFormXObjectEnd)ctm=st.pop()||ctm;
-  else if(fn===O.constructPath){const ops=a[0],c=a[1];let j=0,cur=null,start=null;for(const op of ops){if(op===O.moveTo){cur=ap(c[j],c[j+1]);start=cur;j+=2}else if(op===O.lineTo){const q=ap(c[j],c[j+1]);j+=2;if(cur)segs.push([cur,q]);cur=q}
-   else if(op===O.curveTo){cur=ap(c[j+4],c[j+5]);j+=6}else if(op===O.curveTo2||op===O.curveTo3){cur=ap(c[j+2],c[j+3]);j+=4}else if(op===O.closePath){if(cur&&start)segs.push([cur,start]);cur=start}
-   else if(op===O.rectangle){const x=c[j],y=c[j+1],w=c[j+2],h=c[j+3];j+=4;const p1=ap(x,y),p2=ap(x+w,y+h);rects.push(normBox(p1,p2))}}}}
- // rectangles also drawn as 4 separate lines
- const hs=segs.filter(s=>Math.abs(s[0][1]-s[1][1])<.6).map(s=>[Math.min(s[0][0],s[1][0]),Math.max(s[0][0],s[1][0]),(s[0][1]+s[1][1])/2]),vs=segs.filter(s=>Math.abs(s[0][0]-s[1][0])<.6).map(s=>[Math.min(s[0][1],s[1][1]),Math.max(s[0][1],s[1][1]),(s[0][0]+s[1][0])/2]);
- for(const top of hs)for(const bot of hs){if(bot[2]<=top[2]+5||bot[2]-top[2]>400)continue;if(Math.abs(top[0]-bot[0])>1.5||Math.abs(top[1]-bot[1])>1.5)continue;const l=vs.some(v=>Math.abs(v[2]-top[0])<1.5&&v[0]<=top[2]+1.5&&v[1]>=bot[2]-1.5),r=vs.some(v=>Math.abs(v[2]-top[1])<1.5&&v[0]<=top[2]+1.5&&v[1]>=bot[2]-1.5);if(l&&r)rects.push([top[0],top[2],top[1],bot[2]])}
- return{hs,rects}}
-async function autoDetect(){if(!S.pdf)return toast('Open a PDF first');const pages=[S.cur];let n=0;const F=FS();
- const occupied=(pg,b)=>allFields().some(({f})=>f.widgets.some(w=>w.page===pg&&!(w.box[2]<b[0]||w.box[0]>b[2]||w.box[3]<b[1]||w.box[1]>b[3])));
- for(const pg of pages){const{hs,rects}=await vectorLines(pg),{items,vp}=await pageText(pg);
-  const tb=items.map(it=>{if(it.vb)return it.vb;const q=vp.convertToViewportRectangle([it.x,it.y-it.h*.2,it.x+it.w,it.y+it.h*.85]);return normBox([q[0],q[1]],[q[2],q[3]])});
-  const textIn=b=>tb.some(t=>t[0]<b[2]-1&&t[2]>b[0]+1&&t[1]<b[3]-1&&t[3]>b[1]+1);const props=[];
-  const uniq=new Set();for(const r of rects){const w=r[2]-r[0],h=r[3]-r[1],key=r.map(v=>Math.round(v)).join(',');if(uniq.has(key))continue;uniq.add(key);
-   if(w>=5&&w<=16&&h>=5&&h<=16&&Math.abs(w-h)<3){if(!textIn(r))props.push({kind:'checkbox',box:r})}
-   else if(w>=40&&h>=10&&h<=120&&!textIn(r)){props.push({kind:'text',box:[r[0]+1,r[1]+1,r[2]-1,r[3]-1],multiline:h>30})}}
-  // underlines: merge collinear pieces, keep long ones with free space above
-  const L=hs.slice().sort((a,b)=>a[2]-b[2]||a[0]-b[0]),merged=[];for(const s of L){const m=merged[merged.length-1];if(m&&Math.abs(m[2]-s[2])<.8&&s[0]<=m[1]+2)m[1]=Math.max(m[1],s[1]);else merged.push(s.slice())}
-  for(const s of merged){if(s[1]-s[0]<50)continue;const b=[s[0]+1,s[2]-14,s[1]-1,s[2]-1];if(rects.some(r=>Math.abs(r[3]-s[2])<1.5||Math.abs(r[1]-s[2])<1.5))continue;
-   const overlap=tb.filter(t=>t[0]<b[2]&&t[2]>b[0]&&t[1]<b[3]&&t[3]>b[1]).reduce((a,t)=>a+Math.min(t[2],b[2])-Math.max(t[0],b[0]),0);if(overlap<(b[2]-b[0])*.3)props.push({kind:'text',box:b})}
-  for(const pz of props){if(occupied(pg,pz.box))continue;n++;let base=pz.kind==='checkbox'?'Check':'Text',i=F.created.length+1;const taken=new Set([...FM.fields.map(f=>f.name),...F.created.map(c=>c.name)]);while(taken.has(base+i))i++;
-   F.created.push({id:uid(),name:base+i,kind:pz.kind,multiline:!!pz.multiline,options:[],page:pg,box:pz.box,auto:true})}}
- saveScales();commit();renderForms();toast(n?`Found ${n} field${n>1?'s':''} — check them in the Forms panel`:'No blank fields found on this page')}
-function renderForms(){const pane=$('#pane-forms');if(!pane)return;if(!S.pdf){pane.innerHTML='<div class="hint">Open a PDF to fill or build forms.</div>';return}const F=FS(),all=allFields();
- pane.innerHTML=`<div class="row" style="gap:4px;flex-wrap:wrap;margin-bottom:8px"><button class="btn" id="fmAdd" style="border:1px solid var(--line)">+ Field</button><button class="btn" id="fmAuto" style="border:1px solid var(--line)">Auto-detect</button></div>
- <label class="chk fld"><input type="checkbox" id="fmShow" ${formShow?'checked':''}> Highlight fields</label><label class="chk fld"><input type="checkbox" id="fmFlat" ${F.flatten?'checked':''}> Flatten form when saving</label>
- ${all.length?'':'<div class="hint">This PDF has no form fields yet. Add fields, or Auto-detect blanks on a static form.</div>'}
- ${all.map(({f,created},i)=>{const v=valOf(f),id='fmv'+i;let inp='';
-  if(f.kind==='checkbox')inp=`<input type="checkbox" data-fv="${esc(f.name)}" ${v?'checked':''}>`;
-  else if(f.kind==='radio')inp=`<select class="ti" data-fv="${esc(f.name)}">${['',...new Set(f.widgets.map(w=>w.exportValue))].map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
-  else if(f.kind==='dropdown'||f.kind==='list')inp=`<select class="ti" data-fv="${esc(f.name)}">${['',...(f.options||[])].map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
-  else if(f.kind==='signature')inp='<span class="hint">signature field</span>';else if(f.kind==='button')inp='<span class="hint">button</span>';
-  else inp=`<input class="ti" ${f.kind==='date'?'type="date"':''} data-fv="${esc(f.name)}" value="${esc(v||'')}" ${f.readOnly?'disabled':''}>`;
-  return`<div style="border-bottom:1px solid #30363f;padding:6px 0"><div class="row" style="gap:6px;margin-bottom:4px"><a href="#" data-fgo="${esc(f.name)}" style="color:#7dd3fc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.name)}</a><small style="color:var(--mut);flex:0">${f.kind}${created?' · new':''}</small>${created?`<button class="btn" data-fed="${esc(f.id)}" style="flex:0;height:22px;padding:0 5px">✎</button>`:''}</div>${inp}</div>`}).join('')}`;
- $('#fmAdd').onclick=()=>{setTool('formfield');toast('Drag a box where the field goes')};$('#fmAuto').onclick=autoDetect;
- $('#fmShow').onchange=e=>{formShow=e.target.checked;LS.set('pm:formshow',formShow);redrawAll()};$('#fmFlat').onchange=e=>{FS().flatten=e.target.checked;saveScales()}}
-H.ready.push(()=>{const pane=addTab('forms','Forms');renderForms();
- pane.addEventListener('change',e=>{const n=e.target.dataset.fv;if(n==null)return;setVal(n,e.target.type==='checkbox'?e.target.checked:e.target.value)});
- pane.addEventListener('click',e=>{const g=e.target.closest('[data-fgo]');if(g){e.preventDefault();const f=allFields().find(x=>x.f.name===g.dataset.fgo);if(f){const w=f.f.widgets[0];S.flash={page:w.page,r:w.box};redrawPage(w.page);scrollToBox(w.page,w.box);setTimeout(()=>{S.flash=null;redrawPage(w.page)},1800)}}
-  const ed=e.target.closest('[data-fed]');if(ed){const c=FS().created.find(x=>x.id===ed.dataset.fed);if(c)fieldDialog(c.page,c.box,c)}})});
-H.open.push(()=>{loadFields()});
-H.ribbon.push({label:'Forms',title:'Fill, create and auto-detect PDF form fields',icon:'<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M7 8h10M7 12h4M13 12h4M7 16h6"/>',fn:()=>switchTab('forms')});
-H.exportPage.push(async(doc,pages,font)=>{const F=S.scales.forms;if(!F||(!Object.keys(F.values||{}).length&&!(F.created||[]).length&&!F.flatten))return;
- const L=PDFLib,form=doc.getForm();
- for(const[name,v]of Object.entries(F.values||{})){let f=null;try{f=form.getFieldMaybe?form.getFieldMaybe(name):form.getField(name)}catch(e){}if(!f)continue;
-  try{if(f instanceof L.PDFTextField)f.setText(v==null?'':String(v));else if(f instanceof L.PDFCheckBox)v?f.check():f.uncheck();else if(f instanceof L.PDFRadioGroup){if(v)f.select(String(v));else f.clear()}
-   else if(f instanceof L.PDFDropdown){if(v)f.select(String(v));else f.clear()}else if(f instanceof L.PDFOptionList){if(v)f.select(String(v));else f.clear()}}catch(e){console.warn('form value',name,e)}}
- for(const c of F.created||[]){const page=pages[c.page-1],vp=S.pages[c.page-1]&&S.pages[c.page-1].vp;if(!page||!vp)continue;
-  const q=[vp.convertToPdfPoint(c.box[0],c.box[1]),vp.convertToPdfPoint(c.box[2],c.box[3])],x=Math.min(q[0][0],q[1][0]),y=Math.min(q[0][1],q[1][1]),w=Math.abs(q[1][0]-q[0][0]),h=Math.abs(q[1][1]-q[0][1]),v=(F.values||{})[c.name];
-  try{if(c.kind==='checkbox'){const cb=form.createCheckBox(c.name);cb.addToPage(page,{x,y,width:w,height:h});if(v)cb.check()}
-   else if(c.kind==='dropdown'){const dd=form.createDropdown(c.name);dd.addOptions(c.options&&c.options.length?c.options:[' ']);dd.addToPage(page,{x,y,width:w,height:h,font});if(v)dd.select(String(v))}
-   else if(c.kind==='signature'){const ctx=doc.context,ref=ctx.register(ctx.obj({Type:'Annot',Subtype:'Widget',FT:'Sig',T:L.PDFString.of(c.name),Rect:[x,y,x+w,y+h],F:4,P:page.ref,MK:ctx.obj({BC:[0,0,.6]})}));page.node.addAnnot(ref);form.acroForm.addField(ref)}
-   else{const tf=form.createTextField(c.name);if(c.multiline)tf.enableMultiline();tf.addToPage(page,{x,y,width:w,height:h,font});tf.setText(v==null?'':String(v))}}catch(e){console.warn('create field',c.name,e)}}
- try{form.updateFieldAppearances(font)}catch(e){}if(F.flatten)try{form.flatten()}catch(e){console.warn('flatten',e)}});
+/* Forms moved to js/forms3.js (fill, create, properties, calculations, actions, data import/export, JavaScript, scripts).
+   These shims keep the drawing tools and page clicks above working with it. */
+let formShow=ls('pm:formshow',true);
+const F3=()=>window.PMForms||{};
+function fieldAt(pg,pt){return F3().fieldAt?F3().fieldAt(pg,pt):null}
+function editField(f){if(F3().editField)F3().editField(f)}
+function fieldDialog(pg,box,c){if(F3().fieldDialog)F3().fieldDialog(pg,box,c)}
 
 /* =====================================================================================
    10. Signatures & seals (visual; certificate signing is out of scope)
