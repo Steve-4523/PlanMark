@@ -1,10 +1,10 @@
 {
  "app": "PlanMark",
- "version": "1.2.2",
+ "version": "1.2.3",
  "minShell": "1.0.0",
- "notes": "Sign in with your Olympia account (same as app.olympiaholdings.com)",
+ "notes": "New drafting layout: panel strip on the left, tools on the right, page navigation under the drawing",
  "files": {
-  "index.html": "7fa8f6b31839cd585ba567abefb6461c907e98ad61570adcc43ee935901413b3",
+  "index.html": "946f833fc65acf398755e96c80274178fe09ec66aee07e72dc2bab6c57bdd631",
   "config.json": "97995b0019049616230020b4bd528e040127ad90a52b37c2aef5d18f50ecda28",
   "js/account.js": "319ed32af59be8cf5ae53852fb56530b91d3c02ce542ad834079f372532314ea",
   "js/auto.js": "0baba16b744cef0738edae8af45b931fee7dbd0859fef02588b67c9e0a8c1607",
@@ -14,6 +14,7 @@
   "js/cloud.js": "8b123e736d86c88c5f2d08e5a0de54dab4dcd2b3860986431e7a8f9c9da6f6c5",
   "js/desktop.js": "4d7622f4032f538f5e5f2101cc4df09b4bd2c265066f07b64d2fe9c42c7671fd",
   "js/docpro.js": "32b6faf628fc575e755f87ad9594571c49b0aef7812a0f9062e2c8d7a305a488",
+  "js/drafting.js": "7626a19b11176d51a74998d94bcf3568820792e15ca3645105d42629deb82795",
   "js/layers.js": "08c07accd9302b32ad21d1336f762a119a04f1eca155e1ef441081e9055a2a4c",
   "js/listpro.js": "3cb69a8e984c1c5a04bcb3553f6aef0ed5cc0f2a64e76d080f099e58fbedf4c8",
   "js/measpro.js": "33e724f76f283a7f7732936deb61d294957a3b00101101ba3ac4985fc927d0fc",
