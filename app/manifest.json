@@ -1,12 +1,12 @@
 {
  "app": "PlanMark",
- "version": "1.2.3",
+ "version": "1.2.4",
  "minShell": "1.0.0",
- "notes": "New drafting layout: panel strip on the left, tools on the right, page navigation under the drawing",
+ "notes": "Website version: sign in with your Olympia account; drop several PDFs at once",
  "files": {
-  "index.html": "946f833fc65acf398755e96c80274178fe09ec66aee07e72dc2bab6c57bdd631",
-  "config.json": "97995b0019049616230020b4bd528e040127ad90a52b37c2aef5d18f50ecda28",
-  "js/account.js": "319ed32af59be8cf5ae53852fb56530b91d3c02ce542ad834079f372532314ea",
+  "index.html": "5c1acac7a929853a865a4e23dacf7aa2e5db7235fa1074cafe484405e90a8483",
+  "config.json": "cd229ba12166d3e8a169f2894dc96096c8d4baf4fc2458934701c63b2ff85dbe",
+  "js/account.js": "e847110078597bacdc3c9bba669e25191460e6f2c8ba473f749c6e06d60ab6bd",
   "js/auto.js": "0baba16b744cef0738edae8af45b931fee7dbd0859fef02588b67c9e0a8c1607",
   "js/batch.js": "b1d9003455e8a239f2b5d00a0ef07b0c0e289fa249049f00bf1a91444e4563b4",
   "js/batch2.js": "ec6860eae4c3140e14bd02fefe7adf96f1b425e500b02dfa9c114c135cc5e753",

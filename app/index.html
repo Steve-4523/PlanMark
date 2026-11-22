@@ -995,7 +995,7 @@ $('#bSettings').onclick=settingsDialog;$('#scaleBtn').onclick=scaleDialog;
 $('#bLeft').onclick=()=>$('#left').classList.toggle('hide');$('#bRight').onclick=()=>$('#right').classList.toggle('hide');
 ['dragenter','dragover'].forEach(ev=>viewer.addEventListener(ev,e=>{e.preventDefault();$('#empty').classList.add('drag')}));
 ['dragleave','drop'].forEach(ev=>viewer.addEventListener(ev,e=>{e.preventDefault();$('#empty').classList.remove('drag')}));
-viewer.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)openFile(f)});
+viewer.addEventListener('drop',e=>{const fs=[...(e.dataTransfer.files||[])];fs.forEach((f,i)=>setTimeout(()=>openFile(f),i*400))});
 viewer.addEventListener('contextmenu',e=>{if(S.drawing||S.countId){e.preventDefault();finishActive()}});
 
 /* ---------- keyboard ---------- */

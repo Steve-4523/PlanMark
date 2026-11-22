@@ -101,7 +101,10 @@ function acctDialog(){const u=AC.user,dv=window.pmDesktop;
 /* ---------- boot ---------- */
 H.ready.push(async()=>{renderAcct();
  try{const r=await fetch('config.json',{cache:'no-store'});if(r.ok){const c=await r.json();if(c&&c.olympia&&c.olympia.url&&c.olympia.anonKey)AC.cfg=Object.assign({},c.olympia,{org:c.org})}}catch(e){}
- if(AC.cfg&&window.pmDesktop){await initOlympia();return}
+ // The desktop app and the company website (any host listed in config "webHosts", e.g. planmark.olympiaholdings.com)
+ // sign in with the Olympia account; other copies (Claude artifact, local test copies) don't.
+ const webHost=AC.cfg&&(AC.cfg.webHosts||[]).some(h=>location.hostname===h||location.hostname.endsWith('.'+h));
+ if(AC.cfg&&(window.pmDesktop||webHost)){await initOlympia();return}
  if(window.claude&&typeof window.claude.use==='function'){try{if(await initClaude())return}catch(e){}}
  renderAcct()});  // plain browser copies (no desktop app, no Claude account) run without sign-in
 window.PMAccount={AC,push,signOut,showGate,token};
