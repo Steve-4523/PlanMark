@@ -1,8 +1,8 @@
 {
  "app": "PlanMark",
- "version": "1.2.0",
+ "version": "1.2.1",
  "minShell": "1.0.0",
- "notes": "PDF text editing, CAD/DWG & IFC viewer, menus, layers, stamps, signatures, encryption, punch/RFI/submittals",
+ "notes": "Updates now install within seconds and reopen your files",
  "files": {
   "index.html": "7fa8f6b31839cd585ba567abefb6461c907e98ad61570adcc43ee935901413b3",
   "config.json": "51c2a5f5854d27e7d475953e9ac17a1793b06a8ea55cf81407367d4e46f28960",
@@ -12,7 +12,7 @@
   "js/batch2.js": "ec6860eae4c3140e14bd02fefe7adf96f1b425e500b02dfa9c114c135cc5e753",
   "js/cad.js": "a351b9ebd74ed58929cc5e22aaa8c9ed797aaf19c4c28dfacc6431a52dcfcda0",
   "js/cloud.js": "8b123e736d86c88c5f2d08e5a0de54dab4dcd2b3860986431e7a8f9c9da6f6c5",
-  "js/desktop.js": "a9a34f9ccfdb465bda34670810a0d1d4f4ad9efb38059a26d37dfad6b2483790",
+  "js/desktop.js": "4d7622f4032f538f5e5f2101cc4df09b4bd2c265066f07b64d2fe9c42c7671fd",
   "js/docpro.js": "32b6faf628fc575e755f87ad9594571c49b0aef7812a0f9062e2c8d7a305a488",
   "js/layers.js": "08c07accd9302b32ad21d1336f762a119a04f1eca155e1ef441081e9055a2a4c",
   "js/listpro.js": "3cb69a8e984c1c5a04bcb3553f6aef0ed5cc0f2a64e76d080f099e58fbedf4c8",

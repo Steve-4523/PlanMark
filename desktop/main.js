@@ -372,6 +372,7 @@ if (!gotLock) {
     // No application menu: no accelerators steal Ctrl+S / Ctrl+O / Ctrl+Z etc.
     Menu.setApplicationMenu(null);
     registerAppProtocol();
+    app.on('browser-window-focus', () => { try { updater.check(); } catch (_) {} });
     updater.init(WEB_ROOT, (st) => { for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('pm:update-ready', st); });
     setupDownloads();
     createWindow();

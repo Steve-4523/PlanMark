@@ -19,7 +19,11 @@ const OWNER = 'Steve-4523';
 const REPO = 'Planmark-';
 const BRANCH = 'main';
 const PREFIX = 'app/';
-const CHECK_EVERY_MS = 30 * 60 * 1000;
+// Poll often: GitHub answers an unchanged commit with 304 Not Modified, which does
+// not count against the API rate limit, so a quick poll is free when nothing changed.
+const CHECK_EVERY_MS = 20 * 1000;
+const BACKOFF_MS = 5 * 60 * 1000;
+let etag = null, lastSha = null, backoffUntil = 0;
 
 let bundledRoot = null;
 let liveRoot = null;
@@ -58,8 +62,8 @@ function init(webRoot, readyCb) {
     active = { dir: path.join(liveRoot, ptr.dir), version: ptr.version };
   }
   try { for (const d of fs.readdirSync(liveRoot)) if (d.startsWith('staging-')) fs.rmSync(path.join(liveRoot, d), { recursive: true, force: true }); } catch (_) {}
-  setTimeout(check, 4000);
-  setInterval(check, CHECK_EVERY_MS);
+  setTimeout(check, 3000);
+  setInterval(() => { if (Date.now() >= backoffUntil) check(); }, CHECK_EVERY_MS);
 }
 
 // Where to read a requested file from: the live update if it has it, else the bundle.
@@ -90,9 +94,15 @@ async function check(manual) {
       sha = 'url' + String(man && man.version || '0').replace(/[^0-9a-z]/gi, '');
       raw = (p) => `${src.base}/${p}?v=${encodeURIComponent(man.version)}`;
     } else {
-      const commit = JSON.parse((await fetchBuf(`https://api.github.com/repos/${src.owner}/${src.repo}/commits/${src.branch}`)).toString('utf8'));
-      sha = commit && commit.sha;
-      if (!sha) throw new Error('No commit found');
+      const hdr = { 'User-Agent': 'PlanMark-Desktop', 'Accept': 'application/vnd.github.sha', 'Cache-Control': 'no-cache' };
+      if (etag && lastSha && !manual) hdr['If-None-Match'] = etag;
+      const r = await net.fetch(`https://api.github.com/repos/${src.owner}/${src.repo}/commits/${src.branch}`, { headers: hdr });
+      if (r.status === 304) { if (lastStatus.state === 'checking') lastStatus = { state: 'up-to-date', version: currentVersion() }; return lastStatus; }
+      if (r.status === 403 || r.status === 429) { backoffUntil = Date.now() + BACKOFF_MS; throw new Error(`GitHub rate limit (HTTP ${r.status}); retrying in 5 minutes`); }
+      if (!r.ok) throw new Error(`HTTP ${r.status} checking for updates`);
+      sha = (await r.text()).trim();
+      if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error('No commit found');
+      etag = r.headers.get('etag'); lastSha = sha;
       raw = (p) => `https://raw.githubusercontent.com/${src.owner}/${src.repo}/${sha}/${src.prefix}${p}`;
       man = JSON.parse((await fetchBuf(raw('manifest.json'))).toString('utf8'));
     }
