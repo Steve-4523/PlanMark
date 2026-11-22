@@ -6,7 +6,8 @@
   "portal": "https://app.olympiaholdings.com",
   "webHosts": [
    "olympiaholdings.com"
-  ]
+  ],
+  "portalHost": "app.olympiaholdings.com"
  },
  "update": {
   "type": "github",
