@@ -1,1 +1,15 @@
-{"org":"Olympia Builders","allowSignup":true,"firebase":null}
+{
+ "org": "Olympia Builders",
+ "olympia": {
+  "url": "https://nsolglpjijgitslovxah.supabase.co",
+  "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zb2xnbHBqaWpnaXRzbG92eGFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3NDE3MDksImV4cCI6MjEwNzMxNzcwOX0.lRI-pW0sHAzrG9GzvgrIN-8DP_QsM-S38yU6b2NbkZw",
+  "portal": "https://app.olympiaholdings.com"
+ },
+ "update": {
+  "type": "github",
+  "owner": "Steve-4523",
+  "repo": "PlanMark",
+  "branch": "main",
+  "prefix": "app/"
+ }
+}

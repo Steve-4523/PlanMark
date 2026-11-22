@@ -1,7 +1,7 @@
 'use strict';
 // PlanMark live updater.
 // The app's own code (index.html, js/*.js, css, etc.) is published to the
-// GitHub repo Steve-4523/Planmark- under app/, with app/manifest.json
+// GitHub repo Steve-4523/PlanMark under app/, with app/manifest.json
 // listing every file and its SHA-256. On launch and every 30 minutes the
 // desktop app compares that manifest with what it has; changed files are
 // downloaded (pinned to the exact commit, so CDN caching can't mix versions),
@@ -16,7 +16,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 const OWNER = 'Steve-4523';
-const REPO = 'Planmark-';
+const REPO = 'PlanMark';
 const BRANCH = 'main';
 const PREFIX = 'app/';
 // Poll often: GitHub answers an unchanged commit with 304 Not Modified, which does

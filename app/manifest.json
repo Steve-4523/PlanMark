@@ -1,12 +1,12 @@
 {
  "app": "PlanMark",
- "version": "1.2.1",
+ "version": "1.2.2",
  "minShell": "1.0.0",
- "notes": "Updates now install within seconds and reopen your files",
+ "notes": "Sign in with your Olympia account (same as app.olympiaholdings.com)",
  "files": {
   "index.html": "7fa8f6b31839cd585ba567abefb6461c907e98ad61570adcc43ee935901413b3",
-  "config.json": "51c2a5f5854d27e7d475953e9ac17a1793b06a8ea55cf81407367d4e46f28960",
-  "js/account.js": "f32484c67ef6800127b17cca8e561f74dd96fd225b068c867e29d44ae8d5d028",
+  "config.json": "97995b0019049616230020b4bd528e040127ad90a52b37c2aef5d18f50ecda28",
+  "js/account.js": "319ed32af59be8cf5ae53852fb56530b91d3c02ce542ad834079f372532314ea",
   "js/auto.js": "0baba16b744cef0738edae8af45b931fee7dbd0859fef02588b67c9e0a8c1607",
   "js/batch.js": "b1d9003455e8a239f2b5d00a0ef07b0c0e289fa249049f00bf1a91444e4563b4",
   "js/batch2.js": "ec6860eae4c3140e14bd02fefe7adf96f1b425e500b02dfa9c114c135cc5e753",

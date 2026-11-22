@@ -198,10 +198,12 @@ ipcMain.handle('pm:new-window', (_e, file) => {
   if (file && file.bytes) extraPending.set(w.webContents.id, [{ name: String(file.name || 'document.pdf'), bytes: Buffer.from(file.bytes) }]);
   return true;
 });
-// Network bridge for account sign-in / settings sync (only Google identity & Firestore endpoints).
-const ALLOWED_FETCH = /^https:\/\/(identitytoolkit|securetoken|firestore)\.googleapis\.com\//;
+// Network bridge for account sign-in / settings sync: the Olympia account server (Supabase auth + REST)
+// and, for older configs, Google identity & Firestore. PM_TEST_FETCH_BASE allows a local test server.
+const ALLOWED_FETCH = /^https:\/\/([a-z0-9]{20}\.supabase\.co\/(auth|rest)\/v1\/|(identitytoolkit|securetoken|firestore)\.googleapis\.com\/)/;
+const TEST_FETCH = process.env.PM_TEST_FETCH_BASE || '';
 ipcMain.handle('pm:fetch', async (_e, url, opt = {}) => {
-  if (typeof url !== 'string' || !ALLOWED_FETCH.test(url)) return { status: 0, body: '{"error":{"message":"blocked"}}' };
+  if (typeof url !== 'string' || !(ALLOWED_FETCH.test(url) || (TEST_FETCH && url.startsWith(TEST_FETCH)))) return { status: 0, body: '{"error":{"message":"blocked"}}' };
   try {
     const r = await net.fetch(url, { method: opt.method || 'GET', headers: opt.headers || {}, body: opt.body || undefined });
     return { status: r.status, body: await r.text() };
