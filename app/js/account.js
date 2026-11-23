@@ -72,13 +72,13 @@ async function signedIn(a){if(AC.provider!=='portal')AC.provider='olympia';AC.us
 async function initOlympia(){const a=LS.get('pm:auth',null);AC.provider='olympia';
  if(a&&a.refresh){try{await token();await signedIn(LS.get('pm:auth'))}catch(e){if(e.auth){_set('pm:auth',null);showGate()}else{AC.user={uid:a.uid,email:a.email,name:a.name||a.email};AC.status='Offline — working with your saved settings';renderAcct();
    clearInterval(AC.retry);AC.retry=setInterval(async()=>{try{await token();clearInterval(AC.retry);signedIn(LS.get('pm:auth'))}catch(_){}},60000)}}}
- else showGate();return true}
+ else if(AC.public){AC.user=null;AC.status='Not signed in — your settings stay on this computer';renderAcct()}else showGate();return true}
 function signOut(){if(AC.provider==='portal'){location.href='/';return}clearInterval(AC.poll);clearInterval(AC.retry);if(AC.remoteUnsub)try{AC.remoteUnsub()}catch(e){}const a=LS.get('pm:auth',null);
  if(/^(olympia|portal)$/.test(AC.provider)&&AC.tok)xfetch(base()+'/auth/v1/logout',{method:'POST',headers:{apikey:AC.cfg.anonKey,Authorization:'Bearer '+AC.tok}}).catch(()=>{});
  // Settings are safe in the account; take them off this computer so the next person starts clean
  // (signatures, tool sets and profiles never carry over to someone else).
  if(/^(olympia|portal)$/.test(AC.provider)){AC.applying=true;try{for(const k of SYNC_KEYS)localStorage.removeItem(k);['pm:sync:at','pm:sync:pushed','pm:sync:user'].forEach(k=>localStorage.removeItem(k))}finally{AC.applying=false}}
- _set('pm:auth',null);AC.tok=null;AC.user=null;renderAcct();if(/^(olympia|portal)$/.test(AC.provider)){showGate();setTimeout(()=>location.reload(),50)}}
+ _set('pm:auth',null);AC.tok=null;AC.user=null;renderAcct();if(/^(olympia|portal)$/.test(AC.provider)){if(!AC.public)showGate();setTimeout(()=>location.reload(),50)}}
 const PORTAL=()=>(AC.cfg&&AC.cfg.portal)||'https://app.olympiaholdings.com';
 /* ---------- sign-in screen ---------- */
 function showGate(){let g=$('#pmGate');if(!g){g=document.createElement('div');g.id='pmGate';g.style.cssText='position:fixed;inset:0;z-index:80;background:radial-gradient(circle at 30% 20%,#23324a,#12151a 70%);display:flex;align-items:center;justify-content:center;padding:16px';document.body.appendChild(g)}
@@ -117,6 +117,10 @@ H.ready.push(async()=>{renderAcct();
  // sign in with the Olympia account; other copies (Claude artifact, local test copies) don't.
  if(AC.cfg&&AC.cfg.portalHost&&location.hostname===AC.cfg.portalHost){const ps=portalSession();if(ps){AC.provider='portal';const u=ps.user||{};
    const a={uid:u.id,email:u.email,name:(u.user_metadata&&(u.user_metadata.full_name||u.user_metadata.name))||''};await signedIn(a);AC.provider='portal';renderAcct();return}}
+ // The public PlanMark site (planmark.olympiaholdings.com) works without signing in; signing in there is optional
+ // (Account → Sign in) and only carries settings between computers.
+ const pubHost=AC.cfg&&(AC.cfg.publicHosts||[]).some(h=>location.hostname===h);
+ if(pubHost){AC.public=true;await initOlympia();return}
  const webHost=AC.cfg&&(AC.cfg.webHosts||[]).some(h=>location.hostname===h||location.hostname.endsWith('.'+h));
  if(AC.cfg&&(window.pmDesktop||webHost)){await initOlympia();return}
  if(window.claude&&typeof window.claude.use==='function'){try{if(await initClaude())return}catch(e){}}

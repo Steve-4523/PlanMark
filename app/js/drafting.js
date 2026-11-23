@@ -105,6 +105,7 @@ body.dl:not(.dlML) #mlist{display:none}
 body.dl #status{height:26px;min-height:26px;padding:0 8px;background:#141414;font-size:12px}
 body.dl #status #hint{color:var(--mut)}
 body.dl #tabBar{background:#1f1f1f}
+.dlMenuItem:hover{background:var(--panel2)}
 }`;
 let built=false,lastTab='pages';
 function build(){
@@ -178,7 +179,7 @@ function decorateTabs(){const tabs=$('#left .tabs');if(!tabs)return;
   if(b.classList.contains('on')){lastTab=t;const n=$('#dlPName');if(n)n.textContent=NAME[t]||b.dataset.dl}})}
 function panelMenu(e){const tabs=[...$$('#left .tabs [data-tab]')];const m=document.createElement('div');
  m.style.cssText=`position:fixed;left:${e.clientX-20}px;top:${e.clientY+14}px;z-index:90;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px;box-shadow:0 10px 30px rgba(0,0,0,.5);max-height:70vh;overflow:auto;min-width:180px`;
- m.innerHTML=tabs.map(b=>`<div data-t="${esc(b.dataset.tab)}" style="display:flex;gap:8px;align-items:center;padding:6px 10px;border-radius:4px;cursor:pointer" onmouseover="this.style.background='var(--panel2)'" onmouseout="this.style.background=''">${svg(ICON[b.dataset.tab]||ICON._,16)}${esc(NAME[b.dataset.tab]||b.dataset.dl||b.textContent)}</div>`).join('');
+ m.innerHTML=tabs.map(b=>`<div data-t="${esc(b.dataset.tab)}" class="dlMenuItem" style="display:flex;gap:8px;align-items:center;padding:6px 10px;border-radius:4px;cursor:pointer">${svg(ICON[b.dataset.tab]||ICON._,16)}${esc(NAME[b.dataset.tab]||b.dataset.dl||b.textContent)}</div>`).join('');
  document.body.appendChild(m);const close=ev=>{if(!m.contains(ev.target)){m.remove();removeEventListener('pointerdown',close,true)}};setTimeout(()=>addEventListener('pointerdown',close,true),0);
  m.onclick=ev=>{const d=ev.target.closest('[data-t]');if(!d)return;const b=$(`#left .tabs [data-tab="${d.dataset.t}"]`);b&&b.click();m.remove()}}
 function splitToggle(o){const v=window.PMViews;if(!v)return;const box=$('#splitBox');const isOn=box&&box.classList.contains('on');const same=isOn&&box.classList.contains('h')===(o==='h');

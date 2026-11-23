@@ -8,4 +8,4 @@ PDF markup and takeoff app for Olympia Holdings (web + Windows desktop).
 To release an update: change files in `app/`, regenerate `app/manifest.json` with a higher version, and push to `main`.
 
 ## Website
-`app/` is also the website (planmark.olympiaholdings.com): Cloudflare Pages serves this folder as-is (no build step, output directory `app`). Every push to `main` redeploys it. People sign in with their Olympia account.
+`app/` is also the public site planmark.olympiaholdings.com: a Vercel project serves this folder as-is (root directory `app`, no build). It needs no sign-in; files open in the visitor's browser and are never uploaded. `app/vercel.json` sets strict security rules (only its own code runs; it talks only to itself and the Olympia sign-in; it can't be embedded in other sites). Every push to `main` redeploys it.
