@@ -13,7 +13,10 @@ HINTS[TOOL]='Press on a word and drag to select text (or drag a box from blank p
 if(!KEYS[TOOL])KEYS[TOOL]='Shift+Alt+T';
 
 const st=document.createElement('style');
-st.textContent=`.page>.pmText{display:none}
+st.textContent=`/* the app's panels, buttons and labels are not text to select (only typing boxes and the PDF's words are) */
+body{user-select:none;-webkit-user-select:none}
+input,textarea,[contenteditable]:not([contenteditable="false"]),[contenteditable]:not([contenteditable="false"]) *{user-select:text;-webkit-user-select:text}
+.page>.pmText{display:none}
 body.pmSelText .page>.pmText{display:block}
 .pmText{position:absolute;left:0;top:0;overflow:hidden;line-height:1;text-align:initial;-webkit-text-size-adjust:none;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;z-index:3;cursor:crosshair}
 .pmText :is(span,br){color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0% 0%;user-select:text;-webkit-user-select:text}
@@ -46,7 +49,7 @@ let bT=0;const soon=()=>{clearTimeout(bT);bT=setTimeout(buildVisible,120)};
 viewer.addEventListener('scroll',()=>{if(on())soon()},{passive:true});
 
 function clearNative(){try{const sl=getSelection();if(sl&&sl.rangeCount&&viewer.contains(sl.anchorNode))sl.removeAllRanges()}catch(e){}}
-function sync(){const a=on();document.body.classList.toggle('pmSelText',a);
+function sync(){const a=on();document.body.classList.toggle('pmSelText',a);{const b=document.getElementById('dlSelT');if(b)b.classList.toggle('on',S.tool===TOOL)}
  if(a){setScale();soon()}else clearNative()}
 const _ur=updateRibbon;updateRibbon=function(){const r=_ur.apply(this,arguments);try{sync()}catch(e){}return r};
 const _sz=setZoom;setZoom=function(){const r=_sz.apply(this,arguments);setScale();if(on())soon();return r};
@@ -78,5 +81,15 @@ addEventListener('keydown',e=>{if(!on()||!(e.ctrlKey||e.metaKey)||e.shiftKey||e.
  if(e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]'))return;
  const p=S.pages[S.cur-1],L=L3();if(!p||!L.selectTextIn)return;e.preventDefault();e.stopImmediatePropagation();L.selectTextIn(p.num,[0,0,p.w,p.h])},true);
 
+// Ctrl+A never selects the whole app (it did when a drop-down or check box had the focus); in a typing box it still selects that box's text
+const editable=t=>t&&t.closest&&(t.closest('textarea,[contenteditable]:not([contenteditable="false"])')||(t.matches&&t.matches('input')&&!/^(checkbox|radio|range|color|button|submit|reset|file|image)$/i.test(t.type||'')));
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='a'&&!editable(e.target))e.preventDefault()},true);
+
+// a "Select Text" button under the drawing, right after Pan (drafting layout)
+function addBtn(){const pan=document.getElementById('dlPan');if(!pan||document.getElementById('dlSelT'))return;
+ const b=document.createElement('button');b.className='btn';b.id='dlSelT';b.title='Select Text (Shift+Alt+T): select and copy words from the PDF';
+ b.innerHTML=`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[TOOL]}</svg>`;
+ b.onclick=()=>setTool(TOOL);pan.after(b);sync()}
+H.ready.push(()=>{setTimeout(addBtn,0);setTimeout(addBtn,300)});   // the drafting layout builds its bar just after start-up
 window.PMSelText={build,buildVisible};
 })();
