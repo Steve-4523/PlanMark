@@ -39,6 +39,7 @@ const NAV={
  cont:'<rect x="6" y="2" width="12" height="9" rx="1"/><rect x="6" y="13" width="12" height="9" rx="1"/>',
  splitv:'<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M12 4v16"/>',
  splith:'<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 12h18"/>',
+ sync:'<rect x="2" y="5" width="8" height="14" rx="1"/><rect x="14" y="5" width="8" height="14" rx="1"/><path d="M10 10h4M12.5 8.5L14 10l-1.5 1.5M14 14h-4M11.5 12.5L10 14l1.5 1.5"/>',
  first:'<path d="M6 5v14M18 6l-8 6 8 6"/>', last:'<path d="M18 5v14M6 6l8 6-8 6"/>',
  list:'<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
  pan:'<path d="M8 13V6a1.5 1.5 0 013 0v5M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6a1.5 1.5 0 013 0v8c0 4-2.7 7-6.3 7-2.6 0-4.3-1.4-5.3-3.6L3.6 13a1.5 1.5 0 012.6-1.4L8 14"/>',
@@ -127,7 +128,8 @@ function build(){
   mk('dlSingle','Single page',NAV.single,()=>{L()&&L().setMode('single');navState()}),
   mk('dlCont','Continuous',NAV.cont,()=>{L()&&L().setMode('continuous');navState()}),
   mk('dlSplitV','Split vertically',NAV.splitv,()=>splitToggle('v')),
-  mk('dlSplitH','Split horizontally',NAV.splith,()=>splitToggle('h')),sep(),
+  mk('dlSplitH','Split horizontally',NAV.splith,()=>splitToggle('h')),
+  mk('dlSync','Synchronize split panes (scroll, zoom and page together)',NAV.sync,()=>{const v=L();if(!v)return;if(!v.P2.on)return toast('Split the view first');v.setSync();navState()}),sep(),
   mk('dlPan','Pan (Space)',NAV.pan,()=>setTool('pan')),
   mk('dlSel','Select (V)',NAV.select,()=>setTool('select')));
  const move=(...ids)=>ids.forEach(id=>{const e=$('#'+id);if(e)nav.appendChild(e)});
@@ -190,19 +192,19 @@ function decorateThumbs(){if(!document.body.classList.contains('dl'))return;
  $$('#pane-pages .thumb').forEach(t=>{const n=+t.dataset.p;if(!n)return;
   // the page number on its own line, the scale under it
   for(const node of [...t.childNodes])if(node.nodeType===3&&/Page\s*\d+/.test(node.textContent)){const s=document.createElement('span');s.className='dlNum';s.textContent=String(n);node.replaceWith(s)}
-  let lab=t.querySelector('.dlNum');const pl=(S.pages[n-1]&&S.pages[n-1].label)||'';if(lab&&pl&&pl!==String(n))lab.textContent=n+' · '+pl;
+  let lab=t.querySelector('.dlNum');const pl=(window.PMLabels&&PMLabels.has(n))?PMLabels.labelOf(n):((S.pages[n-1]&&S.pages[n-1].label)||'');if(lab){const want=pl&&pl!==String(n)?pl:String(n);if(lab.textContent!==want)lab.textContent=want}
   let sc=t.querySelector('.dlSc');if(!sc){sc=document.createElement('span');sc.className='dlSc';(lab||t).after?lab?lab.after(sc):t.appendChild(sc):t.appendChild(sc)}
   const tx=scaleText(n);if(sc.textContent!==tx)sc.textContent=tx;
   t.classList.toggle('cur',n===S.cur)})}
 function navState(){if(!document.body.classList.contains('dl'))return;
  const n=S.pages.length,c=S.cur||0,pi=$('#pageIn');
- if(pi&&document.activeElement!==pi){const lab=(S.pages[c-1]&&S.pages[c-1].label)||'';pi.value=n?`${lab&&lab!==String(c)?lab:c} (${c} of ${n})`:''}
+ if(pi&&document.activeElement!==pi){const lab=(window.PMLabels&&c&&PMLabels.has(c))?PMLabels.labelOf(c):((S.pages[c-1]&&S.pages[c-1].label)||'');pi.value=n?`${lab&&lab!==String(c)?lab:c} (${c} of ${n})`:''}
  const d=$('#dlDoc');if(d)d.innerHTML=S.fileName?`<span class="mut">Name:</span> <b>${esc(S.fileName.replace(/\.pdf$/i,''))}</b> <span class="mut" style="margin-left:10px">Pages:</span> <b>${n}</b>`:'';
  const p=S.pages[c-1];const i=$('#dlInfo');if(i)i.textContent=p?`${(p.w/72).toFixed(2)} x ${(p.h/72).toFixed(2)} in      ${scaleText(c)==='Scale Not Set'?'':scaleText(c)}`:'';
  let mode='continuous';try{mode=(window.PMLayout&&PMLayout.get().mode)||'continuous'}catch(e){}
  const box=$('#splitBox'),sOn=box&&box.classList.contains('on');
  const set=(id,v)=>{const e=$('#'+id);if(e)e.classList.toggle('on',!!v)};
- set('dlSingle',mode==='single');set('dlCont',mode==='continuous');set('dlSplitV',sOn&&!box.classList.contains('h'));set('dlSplitH',sOn&&box.classList.contains('h'));
+ set('dlSingle',mode==='single');set('dlCont',mode==='continuous');set('dlSplitV',sOn&&!box.classList.contains('h'));set('dlSplitH',sOn&&box.classList.contains('h'));{const v=window.PMViews,b=$('#dlSync');if(b){b.disabled=!sOn;set('dlSync',sOn&&v&&v.P2.sync)}}
  set('dlPan',S.tool==='pan');set('dlSel',S.tool==='select');set('dlMLBtn',document.body.classList.contains('dlML'));
  document.body.classList.toggle('dlSel',S.sel&&S.sel.size>0);
  decorateThumbs()}

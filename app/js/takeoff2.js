@@ -131,6 +131,10 @@ H.snap=function(p,pt,e){let r=defaultSnap()?_snap(p,pt,e):ownSnap(p,pt,e);
  if(i>=0)H.over[i]=mine;else H.over.push(mine)})();
 /* ===================================================================== Dynamic Fill with settings */
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('#modal .btn.pri');if(b&&$('#dfO')){TO.dfillOut=$('#dfO').value;saveTO()}},true);
+/* push a traced outline out by d pixels along each edge's normal (mitred), so straight walls move square, not toward a centre point */
+function fillOutset(pts,d){for(let i=0;pts.length>3&&i<pts.length;){const a=pts[(i-1+pts.length)%pts.length],p=pts[i],b=pts[(i+1)%pts.length],x1=p[0]-a[0],y1=p[1]-a[1],x2=b[0]-p[0],y2=b[1]-p[1];if(Math.abs(x1*y2-y1*x2)<.02*Math.hypot(x1,y1)*Math.hypot(x2,y2)&&x1*x2+y1*y2>0)pts=pts.filter((_,j)=>j!==i);else i++}const n=pts.length;if(n<3||!d)return pts;let A=0;for(let i=0;i<n;i++){const a=pts[i],b=pts[(i+1)%n];A+=a[0]*b[1]-b[0]*a[1]}const sg=A>0?1:-1;
+ return pts.map((p,i)=>{const a=pts[(i-1+n)%n],b=pts[(i+1)%n];const e1=[p[0]-a[0],p[1]-a[1]],e2=[b[0]-p[0],b[1]-p[1]],l1=Math.hypot(...e1)||1,l2=Math.hypot(...e2)||1;
+  const n1=[e1[1]/l1*sg,-e1[0]/l1*sg],n2=[e2[1]/l2*sg,-e2[0]/l2*sg];let nx=n1[0]+n2[0],ny=n1[1]+n2[1];const L=Math.hypot(nx,ny)||1;nx/=L;ny/=L;const c=Math.max(.35,n1[0]*nx+n1[1]*ny);return[p[0]+nx*d/c,p[1]+ny*d/c]})}
 async function fill2(p,pt){toast('Filling…');try{const D=TO.dfill,k=Math.min(Math.max(.5,(+D.dpi||144)/72),Math.sqrt(9e6/(p.w*p.h)));const pg=await S.pdf.getPage(p.num),vp=pg.getViewport({scale:k}),W=Math.ceil(vp.width),Hh=Math.ceil(vp.height);
  const c=document.createElement('canvas');c.width=W;c.height=Hh;const ctx=c.getContext('2d',{willReadFrequently:true});ctx.fillStyle='#fff';ctx.fillRect(0,0,W,Hh);await pg.render({canvasContext:ctx,viewport:vp}).promise;
  if(D.useMarkups){ctx.save();ctx.scale(k,k);ctx.strokeStyle='#000';ctx.lineWidth=Math.max(1.5/k,1);for(const m of S.markups){if(m.page!==p.num||['count','note','stamp','typewriter','symbol','legend','texthl','image','space'].includes(m.type)||m.hidden)continue;for(const q of prims(m))if(q.k==='p'&&q.stroke)try{ctx.stroke(new Path2D(q.d))}catch(_){}}ctx.restore()}
@@ -141,7 +145,7 @@ async function fill2(p,pt){toast('Filling…');try{const D=TO.dfill,k=Math.min(M
  if(edge||cnt>N*.8){toast("That area isn't closed — draw a line across openings, increase the gap size in Fill settings, then click again");return}
  let start=-1;for(let i=0;i<N;i++)if(fl[i]){start=i;break}const F=(x,y)=>x>=0&&y>=0&&x<W&&y<Hh&&fl[y*W+x]===1,nb=[[-1,0],[-1,-1],[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1]];
  const x0=start%W,y0=(start/W)|0;let cx=x0,cy=y0,bx=cx-1,by=cy;const path=[[cx,cy]];for(let gd=0;gd<4e6;gd++){let kk=nb.findIndex(q=>cx+q[0]===bx&&cy+q[1]===by);if(kk<0)kk=0;let ok=false;for(let i=1;i<=8;i++){const q=nb[(kk+i)%8],nx=cx+q[0],ny=cy+q[1];if(F(nx,ny)){const pq=nb[(kk+i-1)%8];bx=cx+pq[0];by=cy+pq[1];cx=nx;cy=ny;ok=true;break}}if(!ok||(cx===x0&&cy===y0))break;path.push([cx,cy])}
- const grow=gap*.9+.5,c0=path.reduce((a,q)=>[a[0]+q[0],a[1]+q[1]],[0,0]).map(v=>v/path.length);let poly=simplify(path,1.3).map(q=>{const dx=q[0]-c0[0],dy=q[1]-c0[1],L=Math.hypot(dx,dy)||1;return[(q[0]+dx/L*grow)/k,(q[1]+dy/L*grow)/k]});
+ const grow=gap*.9+1;let poly=fillOutset(simplify(path,1.3),grow).map(q=>[q[0]/k,q[1]/k]);
  if(poly.length>3&&dist(poly[0],poly[poly.length-1])<1)poly.pop();if(poly.length<3){toast('Could not trace that area');return}
  const out=TO.dfillOut||'area',m=newMarkup(out,p.num,poly,toolStyle(out));if(out==='volume')m.depth=S.defaults.volume.depth||0.3048;pushUndo();S.markups.push(m);commit();if(out==='space')textDialog(m,true,'text');else toast(measLabel(m)||'Area added')}
  catch(e){console.error(e);toast('Fill failed: '+(e.message||e))}}
@@ -150,7 +154,7 @@ let pickPts=null;function pickPoints(n,msg){return new Promise(res=>{if(S.tool!=
 H.down=(prev=>(e,p,pt)=>{
  if(pickPts&&p){const q=sp(p,pt,e);pickPts.pts.push({page:p.num,pt:q});if(pickPts.pts.length>=pickPts.n){const r=pickPts;pickPts=null;updateRibbon();r.res(r.pts)}else $('#hint').textContent=pickPts.msg+` (${pickPts.pts.length}/${pickPts.n})`;return true}
  if(S.tool==='qmeasure'&&p){const now=performance.now();if(QM.done||QM.page!==p.num){QM.pts=[];QM.done=false;QM.page=p.num}
-  if(QM.pts.length&&now-QM.last<350){QM.done=true;QM.cur=null;redrawPage(p.num);$('#live').textContent=qmText();QM.last=0;return true}QM.last=now;QM.pts.push(sp(p,pt,e));QM.cur=null;redrawPage(p.num);$('#live').textContent=qmText();return true}
+  if(QM.pts.length&&now-QM.last<350&&Math.hypot(pt[0]-QM.pts[QM.pts.length-1][0],pt[1]-QM.pts[QM.pts.length-1][1])*S.zoom<=6){QM.done=true;QM.cur=null;redrawPage(p.num);$('#live').textContent=qmText();QM.last=0;return true}QM.last=now;QM.pts.push(sp(p,pt,e));QM.cur=null;redrawPage(p.num);$('#live').textContent=qmText();return true}
  if(S.tool==='dfill'&&p){fill2(p,pt);return true}
  return prev?prev(e,p,pt):false})(H.down);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&pickPts){pickPts=null;updateRibbon();toast('Cancelled')}},true);

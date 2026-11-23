@@ -128,6 +128,7 @@ function queueFile(filePath) {
   try {
     const bytes = fs.readFileSync(filePath);
     pendingFiles.push({ name: path.basename(filePath), path: filePath, bytes });
+    savePaths.add(normP(filePath));
     flushFiles();
   } catch (err) {
     dialog.showErrorBox('PlanMark', `Could not open file:\n${filePath}\n\n${err.message}`);
@@ -282,6 +283,109 @@ ipcMain.handle('pm:fetch', async (_e, url, opt = {}) => {
     return { status: r.status, body: await r.text() };
   } catch (err) { return { status: 0, body: JSON.stringify({ error: { message: 'Failed to fetch: ' + err.message } }) }; }
 });
+// ---------------------------------------------------------------------------
+// Save to the same file (Ctrl+S) and Save As (Ctrl+Shift+S). Writes are allowed only to PDFs the person opened
+// (command line, Open dialog, drag-drop) or chose in a Save As dialog.
+const savePaths = new Set();
+const normP = (p) => path.resolve(String(p || ''));
+ipcMain.on('pm:track-path', (_e, p) => { if (okPdf(p)) savePaths.add(normP(p)); });
+function writeAtomic(p, bytes) {
+  const tmp = path.join(path.dirname(p), '.~' + path.basename(p) + '.' + process.pid + '.tmp');
+  fs.writeFileSync(tmp, Buffer.from(bytes || []));
+  try { fs.renameSync(tmp, p); } catch (err) {
+    // Windows refuses to replace a file another program holds open; fall back to writing over it in place.
+    try { fs.copyFileSync(tmp, p); } finally { try { fs.unlinkSync(tmp); } catch (_) {} }
+  }
+}
+function saveErr(err) {
+  const c = (err && err.code) || '';
+  if (/EBUSY|EPERM|EACCES/.test(c)) return 'the file is read-only or open in another program';
+  if (c === 'ENOENT') return 'the folder no longer exists';
+  if (c === 'ENOSPC') return 'the disk is full';
+  return (err && err.message) || String(err);
+}
+ipcMain.handle('pm:save-file', (_e, p, bytes) => {
+  const fp = normP(p);
+  if (typeof p !== 'string' || !/\.pdf$/i.test(fp) || !savePaths.has(fp)) return { ok: false, reason: 'not a file PlanMark opened' };
+  if (!bytes || !bytes.length) return { ok: false, reason: 'nothing to save' };
+  try { writeAtomic(fp, bytes); return { ok: true, path: fp }; } catch (err) { return { ok: false, reason: saveErr(err) }; }
+});
+ipcMain.handle('pm:save-as', async (e, opt = {}) => {
+  const parent = BrowserWindow.fromWebContents(e.sender);
+  const cur = typeof opt.path === 'string' && path.isAbsolute(opt.path) ? opt.path : '';
+  const name = String(opt.name || 'document.pdf').replace(/[\\/:*?"<>|]+/g, '_');
+  const r = await dialog.showSaveDialog(parent, {
+    title: 'Save As',
+    defaultPath: cur ? path.join(path.dirname(cur), name) : path.join(app.getPath('documents'), name),
+    filters: [{ name: 'PDF document', extensions: ['pdf'] }],
+  });
+  if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+  let fp = normP(r.filePath); if (!/\.pdf$/i.test(fp)) fp += '.pdf';
+  try { writeAtomic(fp, opt.bytes); savePaths.add(fp); return { ok: true, path: fp, name: path.basename(fp) }; }
+  catch (err) { return { ok: false, reason: saveErr(err), path: fp }; }
+});
+// Documents with unsaved changes, per window (names), so closing the window can ask Save / Don't Save / Cancel.
+const dirtyDocs = new Map();
+ipcMain.on('pm:dirty', (e, names) => { dirtyDocs.set(e.sender.id, Array.isArray(names) ? names.map(String).slice(0, 50) : []); });
+ipcMain.on('pm:close-window', (e) => { const w = BrowserWindow.fromWebContents(e.sender); if (w && !w.isDestroyed()) { dirtyDocs.delete(e.sender.id); w.destroy(); } });
+// Crash safety: the page's autosave also goes to a file, written straight away (Chromium keeps localStorage in memory
+// for a while, so a crash or power cut could lose the last minutes of markups).
+const recDir = () => path.join(app.getPath('userData'), 'recovery');
+const recFile = (key) => path.join(recDir(), require('crypto').createHash('sha1').update(String(key)).digest('hex') + '.json');
+ipcMain.on('pm:recovery-put', (_e, key, json) => {
+  try {
+    if (typeof key !== 'string' || typeof json !== 'string' || json.length > 50e6) return;
+    fs.mkdirSync(recDir(), { recursive: true });
+    const f = recFile(key), tmp = f + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify({ key, t: Date.now(), json })); fs.renameSync(tmp, f);
+  } catch (_) {}
+});
+ipcMain.on('pm:recovery-drop', (_e, key) => { try { fs.unlinkSync(recFile(key)); } catch (_) {} });
+ipcMain.on('pm:recovery-all', (e) => {
+  const out = [];
+  try {
+    for (const f of fs.readdirSync(recDir())) {
+      if (!f.endsWith('.json')) continue;
+      const full = path.join(recDir(), f);
+      try {
+        const st = fs.statSync(full);
+        if (Date.now() - st.mtimeMs > 60 * 24 * 3600 * 1000) { fs.unlinkSync(full); continue; }
+        out.push(JSON.parse(fs.readFileSync(full, 'utf8')));
+      } catch (_) {}
+    }
+  } catch (_) {}
+  e.returnValue = out;
+});
+
+// Window size, position and maximized state (main window), like any Windows program.
+const stateFile = () => path.join(app.getPath('userData'), 'window-state.json');
+function readWindowState() {
+  try {
+    const s = JSON.parse(fs.readFileSync(stateFile(), 'utf8'));
+    const b = s && s.bounds;
+    if (!b || !(b.width >= 400 && b.height >= 300)) return null;
+    // Only if it is still on a connected screen (a monitor may have been unplugged).
+    const { screen } = require('electron');
+    const onScreen = screen.getAllDisplays().some((d) => { const a = d.workArea; return b.x + 100 > a.x && b.y + 50 > a.y && b.x + 100 < a.x + a.width && b.y + 50 < a.y + a.height; });
+    return onScreen ? { bounds: b, maximized: !!s.maximized } : { bounds: { width: b.width, height: b.height }, maximized: !!s.maximized };
+  } catch (_) { return null; }
+}
+function trackWindowState(win) {
+  let t = null;
+  const save = () => {
+    if (win.isDestroyed()) return;
+    try {
+      const maximized = win.isMaximized(), full = win.isFullScreen();
+      let prev = null; try { prev = JSON.parse(fs.readFileSync(stateFile(), 'utf8')); } catch (_) {}
+      const bounds = (maximized || full || win.isMinimized()) ? ((prev && prev.bounds) || win.getNormalBounds()) : win.getBounds();
+      fs.writeFileSync(stateFile(), JSON.stringify({ bounds, maximized }));
+    } catch (_) {}
+  };
+  const soon = () => { clearTimeout(t); t = setTimeout(save, 400); };
+  ['resize', 'move', 'maximize', 'unmaximize'].forEach((ev) => win.on(ev, soon));
+  win.on('close', save);
+}
+
 ipcMain.on('pm:reload', (e) => { try { e.sender.reloadIgnoringCache(); } catch (_) {} });
 ipcMain.on('pm:ready', (e) => {
   if (mainWindow && e.sender === mainWindow.webContents) {
@@ -321,10 +425,13 @@ function createWindow(extra) {
   });
 
   if (!extra) mainWindow = win;
+  const ws = !extra && readWindowState();
+  if (ws) win.setBounds(ws.bounds);
   win.once('ready-to-show', () => {
-    win.maximize();
+    if (!ws || ws.maximized) win.maximize();
     win.show();
   });
+  if (!extra) trackWindowState(win);
 
   // Keep the window title "PlanMark" unless the page sets a meaningful one.
   win.on('page-title-updated', (e, title) => {
@@ -341,14 +448,11 @@ function createWindow(extra) {
     if (details.isMainFrame && !details.isSameDocument && !extra) rendererReady = false;
   });
 
-  // DevTools: Ctrl+Shift+I / F12. Everything else goes to the page untouched.
+  // DevTools: Ctrl+Shift+Alt+I only. Ctrl+Shift+I (Insert pages) and Shift+F12 (Balance split panes) belong to the page.
   wc.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return;
     const key = (input.key || '').toLowerCase();
-    if ((input.control || input.meta) && input.shift && key === 'i') {
-      wc.toggleDevTools();
-      event.preventDefault();
-    } else if (key === 'f12') {
+    if ((input.control || input.meta) && input.shift && input.alt && (key === 'i' || input.code === 'KeyI')) {
       wc.toggleDevTools();
       event.preventDefault();
     }
@@ -381,7 +485,30 @@ function createWindow(extra) {
 
   // Page used beforeunload to warn about unsaved changes: Electron would
   // silently cancel the close, so ask the user instead.
+  win.on('close', () => { win.__closing = Date.now(); });
   wc.on('will-prevent-unload', (event) => {
+    const closing = win.__closing && Date.now() - win.__closing < 3000;
+    win.__closing = 0;
+    const dirty = dirtyDocs.get(wc.id) || [];
+    // A reload (e.g. applying an update) keeps unsaved documents: their markups and "unsaved" state come back after it.
+    if (!closing && dirty.length) { event.preventDefault(); return; }
+    if (closing && dirty.length) {
+      const one = dirty.length === 1;
+      const choice = dialog.showMessageBoxSync(win, {
+        type: 'warning',
+        buttons: ['Save', "Don't Save", 'Cancel'],
+        defaultId: 0,
+        cancelId: 2,
+        noLink: true,
+        title: 'PlanMark',
+        message: one ? `Save changes to ${dirty[0]} before closing?` : `Save changes to ${dirty.length} documents before closing?`,
+        detail: one ? 'Your changes will be lost if you don\'t save them.' : dirty.join('\n'),
+      });
+      // Either way the page finishes the job (saving may need a Save As dialog) and then closes the window itself.
+      if (choice === 0) wc.send('pm:close-request', 'save');
+      else if (choice === 1) wc.send('pm:close-request', 'discard');
+      return;
+    }
     const choice = dialog.showMessageBoxSync(win, {
       type: 'question',
       buttons: ['Leave', 'Stay'],
@@ -394,7 +521,9 @@ function createWindow(extra) {
     if (choice === 0) event.preventDefault(); // preventDefault here = ignore beforeunload, proceed
   });
 
+  const wcId = wc.id;
   win.on('closed', () => {
+    dirtyDocs.delete(wcId);
     if (win === mainWindow) {
       rendererReady = false;
       const others = BrowserWindow.getAllWindows().filter(w => w !== win && !w.isDestroyed() && !w.getParentWindow());

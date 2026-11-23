@@ -47,6 +47,21 @@ contextBridge.exposeInMainWorld('pmDesktop', {
   lockRelease(p) { return ipcRenderer.invoke('pm:lock-release', p); },
   /** Email a PDF: {name, bytes, to, subject, body} → {method:'outlook'|'mailto', path}. */
   emailFile(o) { return ipcRenderer.invoke('pm:email', { name: o && o.name, bytes: o && o.bytes, to: o && o.to, subject: o && o.subject, body: o && o.body }); },
+  /** Save to the same file: (path, bytes) → {ok, reason}. Only PDFs that were opened or chosen in Save As. */
+  saveFile(p, bytes) { return ipcRenderer.invoke('pm:save-file', p, bytes); },
+  /** Save As dialog + write: {name, path, bytes} → {ok, path, name} or {canceled:true}. */
+  saveFileAs(o) { return ipcRenderer.invoke('pm:save-as', { name: o && o.name, path: o && o.path, bytes: o && o.bytes }); },
+  /** Tell the app a PDF on disk is open (picked or dropped), so Save can write back to it. */
+  trackPath(p) { if (typeof p === 'string' && p) ipcRenderer.send('pm:track-path', p); },
+  /** Names of documents with unsaved changes in this window (for the close prompt). */
+  setDirty(names) { ipcRenderer.send('pm:dirty', Array.isArray(names) ? names.map(String) : []); },
+  /** cb('save'|'discard') after the person answered the close prompt; the page then calls closeWindow(). */
+  onCloseRequest(cb) { if (typeof cb === 'function') ipcRenderer.on('pm:close-request', (_e, a) => { try { cb(String(a)); } catch (err) { console.error(err); } }); },
+  closeWindow() { ipcRenderer.send('pm:close-window'); },
+  /** Crash recovery copy of a document's autosave, written to disk straight away. */
+  recoveryPut(key, json) { ipcRenderer.send('pm:recovery-put', String(key), String(json)); },
+  recoveryDrop(key) { ipcRenderer.send('pm:recovery-drop', String(key)); },
+  recoveryAll() { try { return ipcRenderer.sendSync('pm:recovery-all') || []; } catch (_) { return []; } },
   newWindow(file) { return ipcRenderer.invoke('pm:new-window', file ? { name: file.name, bytes: file.bytes } : null); },
   /**
    * Register a handler for PDFs opened via "Open with", the command line, or a

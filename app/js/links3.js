@@ -365,19 +365,19 @@ L3.copyPagesTo=copyPagesTo;
 /* =========================== 7. SPLIT VIEW =========================== */
 function splitOn(){const b=$('#splitBox');return!!(b&&b.classList.contains('on'))}
 function toggleSplit(){const v=Vw();if(!S.pdf)return toast('Open a PDF first');if(!splitOn()){v.openSplit&&v.openSplit();return}const o=(v.V&&v.V.orient)==='h'?'v':'h';v.openSplit(o);toast(o==='h'?'Split: top / bottom':'Split: side by side')}
-function balance(){const v=Vw();if(!splitOn())return toast('Split the view first (Ctrl+2 or Ctrl+3)');if(v.V)v.V.splitRatio=.5;const w=$('#viewer2wrap');if(w)w.style.flex='0 0 50%';try{v.setDim(v.V.dim)}catch(e){}setTimeout(()=>{window.dispatchEvent(new Event('resize'));try{scheduleRender()}catch(e){}},30);toast('Panes balanced')}
+function balance(){const v=Vw();if(!splitOn())return toast('Split the view first (Ctrl+2 or Ctrl+3)');if(v.balance){v.balance();toast('Panes balanced');return}if(v.V)v.V.splitRatio=.5;const w=$('#viewer2wrap');if(w)w.style.flex='0 0 50%';try{v.setDim(v.V.dim)}catch(e){}setTimeout(()=>{window.dispatchEvent(new Event('resize'));try{scheduleRender()}catch(e){}},30);toast('Panes balanced')}
 L3.toggleSplit=toggleSplit;L3.balance=balance;
 // click into the other pane to work in it (it becomes the editable pane)
-function markActive(){const a=$('#viewer'),b=$('#viewer2');if(!a||!b)return;a.classList.toggle('lk3Act',splitOn());b.classList.remove('lk3Act')}
+function markActive(){const a=$('#viewer'),b=$('#viewer2');if(!a||!b)return;a.classList.toggle('lk3Act',splitOn()&&!Vw().activatePane);b.classList.remove('lk3Act')}
 H.ready.push(()=>{const v2=$('#viewer2');if(!v2)return;
- v2.addEventListener('pointerdown',e=>{if(!P3.editBoth||e.button!==0||e.pointerType==='touch'||!splitOn())return;const t=T[S.tool];if(!t||t.kind==='nav')return;e.preventDefault();e.stopPropagation();activatePane2()},true);
- v2.addEventListener('dblclick',e=>{if(!P3.editBoth||!splitOn())return;e.preventDefault();activatePane2()});setInterval(markActive,800)});
-function activatePane2(){const v=Vw();if(!v.swapPanes)return;v.swapPanes();markActive();toast('Now working in this pane')}
+ v2.addEventListener('pointerdown',e=>{if(Vw().activatePane||!P3.editBoth||e.button!==0||e.pointerType==='touch'||!splitOn())return;const t=T[S.tool];if(!t||t.kind==='nav')return;e.preventDefault();e.stopPropagation();activatePane2()},true);
+ v2.addEventListener('dblclick',e=>{if(Vw().activatePane||!P3.editBoth||!splitOn())return;e.preventDefault();activatePane2()});setInterval(markActive,800)});
+function activatePane2(){const v=Vw();if(v.activatePane)v.activatePane();else if(v.swapPanes)v.swapPanes();else return;markActive();toast('Now working in this pane')}
 L3.activatePane2=activatePane2;
 // tear a tab away into its own window
 async function tearOff(tid){const v=Vw();if(tid!=null&&tid!==v.curTab){v.switchTo(tid);await new Promise(r=>setTimeout(r,150))}if(!S.bytes)return;const id=v.curTab,name=S.fileName;
  let bytes;try{bytes=window.PMOutput&&PMOutput.markedPdf?await PMOutput.markedPdf(false):S.bytes}catch(e){bytes=S.bytes}if(!bytes)return toast('Could not prepare the document');
- if(window.pmDesktop&&pmDesktop.newWindow){await pmDesktop.newWindow({name,bytes});v.closeTab&&v.closeTab(id);toast(name+' moved to a new window');return}
+ if(window.pmDesktop&&pmDesktop.newWindow){await pmDesktop.newWindow({name,bytes});(v.closeTabNow||v.closeTab)&&(v.closeTabNow||v.closeTab)(id);toast(name+' moved to a new window');return}
  const key='t'+Date.now().toString(36);try{await tearPut({key,name,bytes,at:Date.now()})}catch(e){return toast('This browser blocks moving documents between windows')}
  const w=window.open(location.pathname+'?tear='+key,'_blank');if(!w){toast('Allow pop-ups to open documents in new windows');return}v.closeTab&&v.closeTab(id);toast(name+' moved to a new window');return key}
 L3.tearOff=tearOff;

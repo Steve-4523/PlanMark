@@ -358,7 +358,7 @@ async function buildThumbs(){const tok=++thumbTok,pane=$('#pane-pages');pane.inn
 /* ---------- zoom / navigation ---------- */
 function anchorAt(cx,cy){let best=null,bd=1e18;for(const p of S.pages){const r=p.el.getBoundingClientRect();const dx=cx<r.left?r.left-cx:cx>r.right?cx-r.right:0,dy=cy<r.top?r.top-cy:cy>r.bottom?cy-r.bottom:0,d=dx+dy;if(d<bd){bd=d;best={p,r}}if(d===0)break}
  if(!best)return null;return{p:best.p,pt:[(cx-best.r.left)/S.zoom,(cy-best.r.top)/S.zoom],cx,cy}}
-function setZoom(z,anchor){if(!S.pages.length)return;z=clamp(z,.05,24);const vr=viewer.getBoundingClientRect();if(!anchor)anchor=anchorAt(vr.left+vr.width/2,vr.top+vr.height/2);
+function setZoom(z,anchor){if(!S.pages.length)return;z=clamp(z,.05,64);const vr=viewer.getBoundingClientRect();if(!anchor)anchor=anchorAt(vr.left+vr.width/2,vr.top+vr.height/2);
  S.zoom=z;for(const p of S.pages){p.el.style.width=p.w*z+'px';p.el.style.height=p.h*z+'px'}
  if(anchor){viewer.scrollLeft=anchor.p.el.offsetLeft+anchor.pt[0]*z-(anchor.cx-vr.left);viewer.scrollTop=anchor.p.el.offsetTop+anchor.pt[1]*z-(anchor.cy-vr.top)}
  $('#zoomv').value=Math.round(z*100)+'%';scheduleRender();clearTimeout(setZoom.t);setZoom.t=setTimeout(redrawAll,150)}

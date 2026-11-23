@@ -109,7 +109,7 @@ const _open=openBytes;
 openBytes=async function(bytes,name,restored){
  if(!restored&&window.PDFLib&&isEncrypted(bytes)){const r=await unlock(bytes,name);if(!r){toast('Not opened — password needed');return}
   if(r.fallback){toast("This PDF's protection can't be removed here; it opens read-only for saving");DP.encrypted={name,fallback:true}}
-  else{bytes=r.bytes;DP.encrypted={name,owner:r.owner,P:r.P,R:r.R,hadUserPw:r.pw!==''};setTimeout(()=>toast(`Unlocked "${name}". Copies you save won't have a password — PlanMark can't re-apply one.`),1600)}}
+  else{const raw0=bytes;bytes=r.bytes;DP.encrypted={name,owner:r.owner,P:r.P,R:r.R,hadUserPw:r.pw!=='',pw:r.pw,raw:raw0};setTimeout(()=>toast(`Unlocked "${name}". When you save, it keeps the same password and permissions.`),1600)}}
  else if(!restored)DP.encrypted=null;
  // a PlanMark-saved PDF reopens from its embedded original: carry over what lives only in the outer file
  if(!restored){DP.outer=null;DP.lastAtt=null}
@@ -123,8 +123,9 @@ openBytes=async function(bytes,name,restored){
 async function loadLabels(){const doc=S.pdf;let l=null;try{l=await doc.getPageLabels()}catch(e){}if(doc!==S.pdf)return;const c=LS.get(lbKey(),null);
  if(c&&c.labels&&c.labels.length===S.pages.length){DP.labels=c.labels;DP.custom=true}else{DP.labels=l&&l.length===S.pages.length?l:null;DP.custom=false}showLabels()}
 const labelOf=n=>(DP.labels&&DP.labels[n-1])||String(n);
+window.PMLabels={labelOf:n=>labelOf(n),has:n=>!!(DP.labels&&DP.labels[n-1]&&DP.labels[n-1]!==String(n))};
 const hasLabel=n=>DP.labels&&DP.labels[n-1]&&DP.labels[n-1]!==String(n);
-function showLabels(){$$('.thumb').forEach(t=>{const n=+t.dataset.p,tn=[...t.childNodes].find(c=>c.nodeType===3);if(tn)tn.textContent='Page '+n+(hasLabel(n)?' · '+DP.labels[n-1]:'')});
+function showLabels(){try{window.PMDrafting&&PMDrafting.decorateThumbs()}catch(e){}$$('.thumb').forEach(t=>{const n=+t.dataset.p,tn=[...t.childNodes].find(c=>c.nodeType===3);if(tn)tn.textContent='Page '+n+(hasLabel(n)?' · '+DP.labels[n-1]:'')});
  S.pages.forEach(p=>{const s=p.el.querySelector('.pn');if(s)s.textContent=p.num+(hasLabel(p.num)?' · '+DP.labels[p.num-1]:'')})}
 const roman=n=>{const v=[[1000,'m'],[900,'cm'],[500,'d'],[400,'cd'],[100,'c'],[90,'xc'],[50,'l'],[40,'xl'],[10,'x'],[9,'ix'],[5,'v'],[4,'iv'],[1,'i']];let s='';for(const[a,r]of v)while(n>=a){s+=r;n-=a}return s};
 const alpha=n=>{const c=String.fromCharCode(97+((n-1)%26));return c.repeat(Math.floor((n-1)/26)+1)};
@@ -400,7 +401,7 @@ async function runReduce(mode,dpi,q,pages){const before=S.bytes.length,prev={byt
  catch(e){console.error(e);toast('Could not reduce: '+(e.message||e))}}
 function securityDialog(){const E=DP.encrypted;const perm=E&&E.P!=null?[[4,'Printing'],[8,'Changing the document'],[16,'Copying text and graphics'],[32,'Adding comments / markups'],[256,'Form filling'],[1024,'Assembling pages'],[2048,'High-quality printing']].map(([b,l])=>`${E.P&b?'✅':'⛔'} ${l}`).join('<br>'):'';
  modal('Security',`${E?`<div class="meas"><b style="font-size:13px;color:var(--text)">This PDF was password-protected</b><small>${E.fallback?'Its protection type is not supported for saving.':E.hadUserPw?'Opened with '+(E.owner?'the owner':'the open')+' password.':'It only had an owner (permissions) password, so it opened without asking.'}</small></div>${perm?'<div class="hint" style="margin-bottom:8px"><b style="color:var(--text)">Permissions set by the author</b><br>'+perm+'</div>':''}`:'<div class="hint" style="margin-bottom:8px">This PDF is not password-protected.</div>'}
- <div class="hint">PlanMark opens password-protected PDFs (after you enter the password) so you can mark them up. Copies you save are <b>not</b> password-protected — PlanMark can't apply PDF passwords. If a saved copy must be protected, add a password with your company's PDF tool before sending it. Please respect the author's permissions.</div>`,[{label:'OK',cancel:1}])}
+ <div class="hint">PlanMark opens password-protected PDFs (after you enter the password) so you can mark them up. ${E&&!E.fallback?'When you save, the copy keeps the <b>same password and permissions</b> as the file you opened. Use Security ▸ Remove security if you need an unprotected copy.':'PlanMark can add a password when you save: Document tools ▸ Security.'} Please respect the author's permissions.</div>`,[{label:'OK',cancel:1}])}
 
 /* =====================================================================================
    8. WIRING
@@ -417,5 +418,5 @@ function docDialog(){const b=(id,t,d)=>`<button class="btn" id="${id}" style="bo
  go('dtPL',labelsDialog);go('dtBM',need(bmFromLabels));go('dtTOC',need(tocDialog));go('dtLOG',need(drawingLog));go('dtHF',hfDialog);go('dtHX',removeHF);
  go('dtCR',cropDialog);go('dtBK',blankDialog);go('dtRP',replaceDialog);go('dtSL',slipDialog);go('dtRZ',resizeDialog);go('dtAT',()=>switchTab('attach'));go('dtRD',reduceDialog);go('dtSC',securityDialog)}
 H.ribbon.push({label:'Document',title:'Links, bookmarks, page labels, headers & footers, page tools, attachments, file size, security',icon:'<path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/><path d="M9 14a2 2 0 002.8 0l1.5-1.5a2 2 0 00-2.8-2.8l-.5.5"/><path d="M13 15.5l-.5.5a2 2 0 01-2.8-2.8"/>',fn:docDialog});
-Object.assign(window.PMDoc,{gc,decryptPdf,isEncrypted,batchLink,runBatchLink,labelsDialog,saveLabels,drawingLog,applyHF,removeHF,runCrop,runResize,runSlip,insertTOC,bmFromLabels,runReduce,securityDialog,followLink,loadLinks,labelOf,docDialog,md5,rc4});
+Object.assign(window.PMDoc,{gc,decryptPdf,isEncrypted,batchLink,runBatchLink,labelsDialog,saveLabels,drawingLog,applyHF,removeHF,runCrop,runResize,runSlip,insertTOC,bmFromLabels,runReduce,securityDialog,followLink,loadLinks,labelOf,docDialog,md5,rc4,blankDialog,replaceDialog,cropDialog,slipDialog,hfDialog});
 })();

@@ -81,7 +81,7 @@ async function encryptBytes(bytes,o){const q=await getQpdf(),id=Math.random().to
  if(!res||(rc!==0&&rc!==3))throw new Error('Encryption failed (qpdf exit '+rc+')');return new Uint8Array(res)}
 async function decryptBytes(bytes,pw){const q=await getQpdf(),id=Math.random().toString(36).slice(2),inp='/in'+id+'.pdf',out='/out'+id+'.pdf';q.FS.writeFile(inp,bytes);let rc;try{rc=q.callMain(['--password='+pw,'--decrypt',inp,out])}catch(e){rc=1}
  let res=null;try{res=q.FS.readFile(out)}catch(e){}try{q.FS.unlink(inp);q.FS.unlink(out)}catch(e){}if(!res||(rc!==0&&rc!==3))throw new Error('Wrong password or not decryptable');return new Uint8Array(res)}
-window.PMSecurity={encryptBytes,decryptBytes};
+window.PMSecurity={encryptBytes,decryptBytes,getQpdf};
 /* ---------- multi-file batch ---------- */
 const PAPERS={Letter:[8.5,11],Legal:[8.5,14],Tabloid:[11,17],'ARCH A':[9,12],'ARCH B':[12,18],'ARCH C':[18,24],'ARCH D':[24,36],'ARCH E':[36,48],'ANSI C':[17,22],'ANSI D':[22,34],'ANSI E':[34,44],A4:[8.27,11.69],A3:[11.69,16.54],A1:[23.39,33.11],A0:[33.11,46.81]};
 function parseRangeN(t,N){t=String(t||'').trim().toLowerCase();if(!t||t==='all')return Array.from({length:N},(_,i)=>i+1);const out=new Set();

@@ -25,8 +25,9 @@ async function extract(pages){if(!pages.length)return;const src=await PDFLib.PDF
  (await out.copyPages(src,pages.map(n=>n-1))).forEach(p=>out.addPage(p));await saveFile(baseName()+`-pages-${pages.length===1?pages[0]:pages[0]+'-'+pages[pages.length-1]}.pdf`,new Blob([await out.save()],{type:'application/pdf'}))}
 async function combine(files,includeCurrent){const out=await PDFLib.PDFDocument.create();let n=0;
  const add=async bytes=>{const d=await PDFLib.PDFDocument.load(bytes,{ignoreEncryption:true});(await out.copyPages(d,d.getPageIndices())).forEach(p=>{out.addPage(p);n++})};
- if(includeCurrent&&S.bytes)await add(S.bytes);for(const f of files)await add(await readFile(f));
- await openBytes(new Uint8Array(await out.save()),'Combined.pdf');toast(`Combined ${n} pages — use Save to keep it`)}
+ const keep=includeCurrent&&S.bytes&&S.markups.length?{markups:JSON.parse(JSON.stringify(S.markups)),scales:JSON.parse(JSON.stringify(S.scales||{}))}:null;if(includeCurrent&&S.bytes)await add(S.bytes);for(const f of files)await add(await readFile(f));
+ await openBytes(new Uint8Array(await out.save()),'Combined.pdf');if(keep&&S.fileName==='Combined.pdf'){S.markups=keep.markups.filter(m=>m.page<=S.pages.length);S.scales=Object.assign({},S.scales,keep.scales);commit()}   // a new tab, like Bluebeam; the open document's pages come first, so its markups keep their page numbers
+ toast(`Combined ${n} pages — use Save to keep it`)}
 async function split(every){const src=await PDFLib.PDFDocument.load(S.bytes,{ignoreEncryption:true}),cnt=src.getPageCount(),zip=new JSZip();
  for(let i=0;i<cnt;i+=every){const out=await PDFLib.PDFDocument.create(),idx=ident(Math.min(every,cnt-i)).map(k=>i+k);(await out.copyPages(src,idx)).forEach(p=>out.addPage(p));
   zip.file(`${baseName()}-${every===1?'p'+(i+1):'p'+(i+1)+'-'+(idx[idx.length-1]+1)}.pdf`,await out.save())}
@@ -75,5 +76,5 @@ function pageBar(){const pane=$('#pane-pages');if(!pane||!S.pages.length||$('#pg
   if(a==='del')modal('Delete page '+n+'?',`<div class="hint">Markups on this page will be removed too.</div>`,[{label:'Cancel',cancel:1},{label:'Delete',pri:1,fn:()=>{deletePages([n])}}])};
  pane.prepend(d)}
 const _bt=buildThumbs;buildThumbs=async function(){const r=_bt.apply(this,arguments);setTimeout(pageBar,0);return r};
-window.PMBatch={rebuild,rotatePages,deletePages,extract,combine,split,batchStamp};
+window.PMBatch={rebuild,rotatePages,deletePages,extract,combine,split,batchStamp,insertFrom};
 })();
