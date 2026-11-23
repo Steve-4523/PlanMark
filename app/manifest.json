@@ -1,10 +1,10 @@
 {
  "app": "PlanMark",
- "version": "1.4.3",
+ "version": "1.4.4",
  "minShell": "1.0.0",
- "notes": "Light mode covers the whole app (like the Olympia app); Pan is the default tool; no more ~$ lock files",
+ "notes": "Markup properties are split into tabs (General, Style, Measure, Layout, More) so they fit without scrolling",
  "files": {
-  "index.html": "d5bc11e3e25c1b77b3657a7f690e0fba68bad89cf0d5f03411b743cbd1fb5f0c",
+  "index.html": "7992e210e2df402e6e9128cf83ba6430ed38576a38a1d8fb72ad1b4a35e5d777",
   "config.json": "ae2ca167ff35af4879d7a5e12308ea3e121e77a047e3e73b07ea208d4ce7dac7",
   "js/account.js": "80b1352e8cc45098033e039e8efad743f3e5cf5fc493351a7f89362e9bccc21c",
   "js/auto.js": "0baba16b744cef0738edae8af45b931fee7dbd0859fef02588b67c9e0a8c1607",
@@ -33,6 +33,7 @@
   "js/panels.js": "301dee83b79db60893b9651569d5e75ed706648f44debcd4430a20fa8647647f",
   "js/pdfedit.js": "080749a5d1bf9a2676797314b33207fbc3317267ed22dd6f7e51bc31a82844b3",
   "js/projects.js": "20ee06b7e25c5d477f1ed9267d0f64e82d700239ea6da3b2257f48d7554f0426",
+  "js/propstabs.js": "a1ab81fd0845827b8b1d26ffbc854fb21d4f598f62ca636913b516fe0ab3eddf",
   "js/qa1.js": "8c80f37f9dc54f57e67407e33b79abb822abc6dc170c96e05a745ba84fa7999c",
   "js/qa2.js": "4adeff44c41cded8f75218f60302115caac72a98a223e2796485f6d54fe1a933",
   "js/qa3.js": "54f31a0962eef42976869398cf547712a4ba6034f12d2312f9b8f9105e41f2b9",
