@@ -499,5 +499,13 @@ H.ribbon.push({label:'CAD/BIM',title:'Open AutoCAD (DWG/DXF) drawings and Revit/
 H.ready.push(()=>{const fi=$('#fileIn');if(fi)fi.setAttribute('accept','application/pdf,.pdf,.dwg,.dxf,.ifc');
  document.addEventListener('keydown',e=>{if(!CAD.visible||modalCb)return;const d=docOf(CAD.cur);if(d&&d.keys&&d.keys(e)){e.preventDefault();e.stopImmediatePropagation()}},true);
  if(window.pmDesktop&&window.pmDesktop.onOpenFile){}});
+/* Files dropped anywhere in the window open, in the website and the Windows app: PDFs and the CAD/BIM files
+   PlanMark reads (DWG, DXF, IFC, Revit). Before, only the page area took them, and only PDFs elsewhere, so a DWG
+   dropped on the side panels, the tab bar or a CAD drawing that was showing did nothing. */
+const DROPPABLE=/\.(pdf|dwg|dxf|ifc|rvt|rfa)$/i;
+addEventListener('dragover',e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes('Files'))e.preventDefault()});
+addEventListener('drop',e=>{if(e.defaultPrevented)return;const all=[...((e.dataTransfer&&e.dataTransfer.files)||[])];if(!all.length)return;e.preventDefault();
+ const fs=all.filter(f=>DROPPABLE.test(f.name));if(!fs.length){toast('PlanMark opens PDF, DWG, DXF, IFC and Revit files');return}
+ fs.forEach((f,i)=>setTimeout(()=>openFile(f),i*400))});
 window.PMCad={CAD,openCadBytes,openCadFile,showDoc,closeDoc,hidePane,openDialog,docOf,readCad,compile,cadToPdf};
 })();

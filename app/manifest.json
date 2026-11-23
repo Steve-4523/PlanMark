@@ -1,8 +1,8 @@
 {
  "app": "PlanMark",
- "version": "1.4.4",
+ "version": "1.4.5",
  "minShell": "1.0.0",
- "notes": "Markup properties are split into tabs (General, Style, Measure, Layout, More) so they fit without scrolling",
+ "notes": "DWG, DXF, IFC and Revit files open when dragged anywhere onto PlanMark (not only PDFs)",
  "files": {
   "index.html": "7992e210e2df402e6e9128cf83ba6430ed38576a38a1d8fb72ad1b4a35e5d777",
   "config.json": "ae2ca167ff35af4879d7a5e12308ea3e121e77a047e3e73b07ea208d4ce7dac7",
@@ -10,7 +10,7 @@
   "js/auto.js": "0baba16b744cef0738edae8af45b931fee7dbd0859fef02588b67c9e0a8c1607",
   "js/batch.js": "6d8d07bc44e330524c01e268ec25ebe64d796b2f10fd1d1f25e6cfad74e728d2",
   "js/batch2.js": "5a7e8b612c926f1538380a3b18493e8372e3828ff57ea5adcae9aa368c9fe471",
-  "js/cad.js": "a351b9ebd74ed58929cc5e22aaa8c9ed797aaf19c4c28dfacc6431a52dcfcda0",
+  "js/cad.js": "77a2fd9228f031896e579bbfbf7de08c7770960f06a4ab3f4acf3e4a9f84c059",
   "js/cloud.js": "8b123e736d86c88c5f2d08e5a0de54dab4dcd2b3860986431e7a8f9c9da6f6c5",
   "js/compare3.js": "2b6f939190af7fc853394221c4f3dc52b7f232b4e34ca71c78e543c7c134977c",
   "js/core.js": "0dfe0ae09cb6683fc2f1ef689f48231afda6c03598ed37c50be4334eb6cc5308",
