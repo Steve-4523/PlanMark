@@ -263,6 +263,7 @@ H.exportPage.push(async(doc)=>{for(const m of S.markups)for(const f of(m.files||
    ===================================================================================== */
 H.down=(prev=>(e,p,pt)=>{if(S.tool==='image'&&p&&(sigPending||snapPending)&&S.imageSrc){const w=snapPending?snapPending.w:200,h=snapPending?snapPending.h:200*(S.imageAR||1);snapPending=null;
   const m=newMarkup('image',p.num,[pt,[pt[0]+w,pt[1]+h]],toolStyle('image'));m.img=S.imageSrc;if(!m.locked)m.subject=m.subject==='Image'?'Snapshot':m.subject;pushUndo();S.markups.push(m);afterCreate(m);return true}
+ if(S.tool==='pan'&&p&&!(e.target.closest&&e.target.closest('.mk'))){const f=fieldAt(p.num,pt);if(f){editField(f);return true}} // form fields can be filled with the default Pan tool too
  if(S.tool==='select'&&p){const mk=e.target.closest&&e.target.closest('.mk'),m=mk&&byId(mk.dataset.id);if(m&&m.locked){if(e.shiftKey||e.ctrlKey||e.metaKey)toggleSel(m.id);else setSel([m.id]);return true}
   if(!mk&&!(e.target.closest&&e.target.closest('[data-h]'))&&!/corner|Align overlay|Auto-label/.test($('#hint').textContent)){const f=fieldAt(p.num,pt);if(f){editField(f);return true}}}
  return prev?prev(e,p,pt):false})(H.down);

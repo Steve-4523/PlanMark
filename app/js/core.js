@@ -180,7 +180,7 @@ const fmtDT=t=>{const d=new Date(t);return d.toLocaleDateString(undefined,{month
 
 /* ---------- state ---------- */
 const settings=Object.assign({author:'User',wheelZoom:true},LS.get('pm:settings',{}));
-const S={pdf:null,bytes:null,fileName:'',fileKey:'',pages:[],markups:[],sel:new Set(),tool:'select',lock:false,zoom:1,scales:{},
+const S={pdf:null,bytes:null,fileName:'',fileKey:'',pages:[],markups:[],sel:new Set(),tool:'pan',lock:false,zoom:1,scales:{},
  defaults:(()=>{const d=clone(BASE_DEF),u=LS.get('pm:defaults',{});for(const k in u)if(d[k])Object.assign(d[k],u[k]);return d})(),
  chest:LS.get('pm:chest',null),chestSel:null,chestStyle:null,toolSubject:null,stampText:'APPROVED',
  undo:[],redo:[],drawing:null,countId:null,clip:null,listSort:{k:'page',dir:1},summary:false,pinch:null,cur:1,flash:null,textCache:{},lastUp:0};
@@ -339,7 +339,7 @@ async function openBytes(bytes,name,restored){
  if(saved){S.markups=saved.markups||[];S.scales=saved.scales||{};if(S.markups.length)setTimeout(()=>toast(`${restored?'Loaded':'Restored'} ${S.markups.length} markup${S.markups.length===1?'':'s'}`),400)}
  $('#pageTot').textContent='/ '+pdf.numPages;['bSave','bMore'].forEach(id=>$('#'+id).disabled=false);
  document.title=name+' — PlanMark';
- fitWidth();commit(true);buildThumbs();updateCur();setTool('select');hook('open',{restored});
+ fitWidth();commit(true);buildThumbs();updateCur();setTool('pan');hook('open',{restored});
 }
 async function blankSheet(){if(!window.PDFLib){toast('PDF engine failed to load');return}
  const d=await PDFLib.PDFDocument.create();const pg=d.addPage([2592,1728]);const f=await d.embedFont(PDFLib.StandardFonts.Helvetica);const g=PDFLib.rgb(.75,.78,.82);
@@ -382,7 +382,7 @@ function scrollToBox(n,b){const p=S.pages[n-1];if(!p)return;const cx=(b[0]+b[2])
 function updateCur(){if(!S.pages.length)return;const vr=viewer.getBoundingClientRect(),my=vr.top+vr.height/2;let best=1,bd=1e18;
  for(const p of S.pages){const r=p.el.getBoundingClientRect();if(r.bottom<vr.top-2000||r.top>vr.bottom+2000)continue;const d=my<r.top?r.top-my:my>r.bottom?my-r.bottom:0;if(d<bd){bd=d;best=p.num}}
  if(best!==S.cur){S.cur=best;updateCurUI()}else updateScaleBtn()}
-function updateCurUI(){$('#pageIn').value=S.cur;$$('.thumb').forEach(t=>t.classList.toggle('on',+t.dataset.p===S.cur));updateScaleBtn()}
+function updateCurUI(){const pi=$('#pageIn');if(document.activeElement!==pi)pi.value=document.body.classList.contains('dl')&&window.PMQA1?PMQA1.curText():S.cur;$$('.thumb').forEach(t=>t.classList.toggle('on',+t.dataset.p===S.cur));updateScaleBtn()}
 function updateScaleBtn(){const sc=scaleFor(S.cur);$('#scaleBtn').textContent='Scale: '+sc.label+(S.pages.length?` · ${sc.unit==='ftin'?'ft-in':UNITS[sc.unit].abbr}`:'')}
 viewer.addEventListener('scroll',()=>{updateCur();scheduleRender()},{passive:true});
 viewer.addEventListener('wheel',e=>{if(!S.pages.length)return;if(e.ctrlKey||e.metaKey||(settings.wheelZoom&&!e.shiftKey)){e.preventDefault();const k=e.ctrlKey&&Math.abs(e.deltaY)<40?0.01:0.0018;const dy=e.deltaMode===1?e.deltaY*30:e.deltaY;setZoom(S.zoom*Math.exp(-dy*k),anchorAt(e.clientX,e.clientY))}},{passive:false});
@@ -419,7 +419,7 @@ viewer.addEventListener('pointerdown',e=>{
  try{viewer.setPointerCapture(e.pointerId)}catch(_){}
  const p=pageFromEvent(e),pt=p?toPt(e,p):null,tool=S.tool,t=T[tool];
  if(H.down&&H.down(e,p,pt))return;
- if(tool==='pan'){G={k:'pan',x:e.clientX,y:e.clientY,sl:viewer.scrollLeft,st:viewer.scrollTop};return}
+ if(tool==='pan'){const mk0=e.target.closest('.mk');G={k:'pan',x:e.clientX,y:e.clientY,sl:viewer.scrollLeft,st:viewer.scrollTop,hit:mk0&&mk0.dataset.id,add:e.shiftKey||e.ctrlKey||e.metaKey};return}
  if(t.kind==='erase'){G={k:'erase',p,undone:false};eraseAt(e.clientX,e.clientY,G);return}
  if(tool==='select'){
   const h=e.target.closest('[data-h]');
@@ -458,6 +458,8 @@ function onUp(e,cancel){
  ptrs.delete(e.pointerId);
  if(S.pinch){if(ptrs.size<2){S.pinch=null;scheduleRender();redrawAll()}G=null;return}
  if(!G)return;const g=G;G=null;
+ // Pan is the default tool: a plain click on a markup (no drag) picks it up with Select, so it can be edited straight away
+ if(!cancel&&g.k==='pan'&&g.hit&&S.tool==='pan'&&Math.hypot(e.clientX-g.x,e.clientY-g.y)<4&&byId(g.hit)){setTool('select');if(g.add)toggleSel(g.hit);else setSel([g.hit]);return}
  if(cancel){if(g.k==='free'||g.k==='drag'){S.drawing=null;redrawAll()}return}
  const p=g.p;
  switch(g.k){
@@ -809,7 +811,7 @@ document.addEventListener('keydown',e=>{
  if(mod&&(k==='='||k==='+')){e.preventDefault();zoomBy(1.25);return}if(mod&&k==='-'){e.preventDefault();zoomBy(.8);return}if(mod&&k==='0'){e.preventDefault();fitPage();return}
  if(mod)return;
  if(k==='delete'||k==='backspace'){e.preventDefault();if(S.drawing||S.countId)undoPoint();else delSel();return}
- if(k==='escape'){if(S.drawing||S.countId)cancelActive();else if(S.sel.size)setSel([]);else setTool('select');return}
+ if(k==='escape'){if(S.drawing||S.countId)cancelActive();else if(S.sel.size)setSel([]);else setTool('pan');return}
  if(k==='enter'){finishActive();return}
  if(e.key===' '){e.preventDefault();if(!S.space){S.space=true;viewer.classList.add('c-pan')}return}
  if(k==='pageup'){gotoPage(S.cur-1);return}if(k==='pagedown'){gotoPage(S.cur+1);return}

@@ -195,6 +195,8 @@ function applyRo(){const W=window.PMWorkspace,ro=D3.ro[S.fileKey];if(W&&W.P){if(
  if(b){if(ro)b.innerHTML=`Read-only copy — ${esc(ro.user||'someone')} has this file open${ro.computer?' on '+esc(ro.computer):''}. ${ro.notify?'You\'ll be told when it\'s free.':''}`;else b.remove()}}
 H.open.push(()=>setTimeout(applyRo,0));
 async function lockFlow(path,key,name){const d=desk();let L=null;try{L=await d.lockCheck(path)}catch(e){return}
+ // No lock files (like Bluebeam): just tidy up one left by an earlier PlanMark on this computer, never anyone else's
+ if(L&&(L.mine||L.stale)){try{await d.lockAcquire(path,'');await d.lockRelease(path)}catch(e){}}return;
  const take=async()=>{try{await d.lockAcquire(path,settings.author||'');D3.locks[path]={key,name}}catch(e){}};
  if(!L||L.mine||L.stale)return take();
  const who=`<b>${esc(L.user||'Someone')}</b>${L.computer?' on '+esc(L.computer):''}`,since=L.time?new Date(L.time).toLocaleString():'';

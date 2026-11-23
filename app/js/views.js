@@ -138,7 +138,7 @@ function safeOpenHook(){const keepO=S.ocr,keepSF=S.setFile,rv=URL.revokeObjectUR
 function afterSwitchUI(t){$('#empty').style.display=S.pdf?'none':'';$('#pageTot').textContent='/ '+(S.pdf?S.pdf.numPages:0);['bSave','bMore'].forEach(id=>{const b=$('#'+id);if(b)b.disabled=!S.pdf});
  document.title=S.pdf?S.fileName+' — PlanMark':'PlanMark — PDF Markup & Takeoff';$('#zoomv').value=Math.round(S.zoom*100)+'%';
  try{searchHits=[];$('#sRes').innerHTML='';$('#sInfo').textContent=''}catch(e){}
- setTool('select');applyMode();if(S.pdf)safeOpenHook();buildThumbs();commit(true);renderProps();updateCurUI();updateScaleBtn();updUndo();scheduleRender();renderTabs();drawRulers();p2Refresh()}
+ setTool('pan');applyMode();if(S.pdf)safeOpenHook();buildThumbs();commit(true);renderProps();updateCurUI();updateScaleBtn();updUndo();scheduleRender();renderTabs();drawRulers();p2Refresh()}
 function switchTo(t){if(!t||t.id===curTab)return;recordNav();const old=tabOf(curTab);stash(old);curTab=t.id;unstash(t);
  // restore scroll once layout is back
  const sl=t.lastSl,stp=t.lastSt;afterSwitchUI(t);requestAnimationFrame(()=>{viewer.scrollLeft=sl||0;viewer.scrollTop=stp||0;updateCur();syncFromMain()});recordNav()}

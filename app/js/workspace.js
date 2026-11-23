@@ -248,7 +248,7 @@ document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement
 viewer.addEventListener('pointermove',e=>{const p=S.pages.length?pageFromEvent(e):null;if(p){const q=toPt(e,p);WS.lastPt={page:p.num,x:q[0],y:q[1]}}
  if(WS.present){laser.style.display='block';laser.style.left=e.clientX+'px';laser.style.top=e.clientY+'px'}
  if(P.crosshair&&!WS.present){const vr=viewer.getBoundingClientRect();cH.style.display=cV.style.display='block';cH.style.top=e.clientY+'px';cH.style.left=vr.left+'px';cH.style.right=(innerWidth-vr.right)+'px';cV.style.left=e.clientX+'px';cV.style.top=vr.top+'px';cV.style.bottom=(innerHeight-vr.bottom)+'px'}
- if(P.popups&&S.tool==='select'&&!G){const mk=e.target.closest&&e.target.closest('.mk'),m=mk&&byId(mk.dataset.id);clearTimeout(popT);
+ if(P.popups&&(S.tool==='select'||S.tool==='pan')&&!G){const mk=e.target.closest&&e.target.closest('.mk'),m=mk&&byId(mk.dataset.id);clearTimeout(popT);
   if(m&&(m.comment||(m.replies&&m.replies.length))){popT=setTimeout(()=>{pop.style.opacity=P.popOpacity;pop.innerHTML=`<b>${esc(m.subject||'')}</b> · <small>${esc(m.author||'')} · ${esc(fmtDT(m.modified||m.created))}</small>\n${esc(m.comment||'')}${(m.replies||[]).map(r=>`\n↳ ${esc(r.author||'')}: ${esc(r.text||'')}`).join('')}`;pop.style.display='block';pop.style.left=Math.min(e.clientX+14,innerWidth-300)+'px';pop.style.top=(e.clientY+16)+'px'},450)}else pop.style.display='none'}});
 viewer.addEventListener('pointerleave',()=>{cH.style.display=cV.style.display='none';pop.style.display='none';clearTimeout(popT)});
 viewer.addEventListener('pointerdown',()=>{pop.style.display='none';clearTimeout(popT)},true);
