@@ -350,10 +350,22 @@ async function blankSheet(){if(!window.PDFLib){toast('PDF engine failed to load'
  pg.drawText('BLANK SHEET  36" x 24"',{x:2212,y:150,size:16,font:f});pg.drawText('Grid: 1" squares',{x:2212,y:120,size:11,font:f});
  await openBytes(new Uint8Array(await d.save()),'Blank Sheet.pdf')}
 let thumbTok=0;
-async function buildThumbs(){const tok=++thumbTok,pane=$('#pane-pages');pane.innerHTML='';
- for(const p of S.pages){const d=document.createElement('div');d.className='thumb';d.dataset.p=p.num;const sc=150/Math.max(p.w,p.h);const c=document.createElement('canvas');c.width=Math.round(p.w*sc);c.height=Math.round(p.h*sc);d.appendChild(c);d.append('Page '+p.num);d.onclick=()=>gotoPage(p.num);pane.appendChild(d)}
+// Thumbnails are drawn at the size they are actually shown on screen times the screen's sharpness (so they stay crisp
+// on high-resolution screens and when the panel is widened), and drawn again whenever the panel gets wider.
+function thumbWant(c){const w=c.getBoundingClientRect().width;return w>0?w*Math.min(window.devicePixelRatio||1,3):0}
+async function drawThumb(p,c,tok){const want=thumbWant(c);if(!want)return;const sc=Math.min(want,1600)/p.w;
+ if(c._sc&&Math.abs(c._sc-sc)/sc<.12)return;c._sc=sc;
+ const pg=await S.pdf.getPage(p.num);if(tok!==thumbTok)return;const vp=pg.getViewport({scale:sc});
+ const t=document.createElement('canvas');t.width=Math.max(1,Math.round(vp.width));t.height=Math.max(1,Math.round(vp.height));
+ await pg.render({canvasContext:t.getContext('2d'),viewport:vp}).promise;if(tok!==thumbTok)return;
+ c.width=t.width;c.height=t.height;c.getContext('2d').drawImage(t,0,0)}
+async function drawThumbs(tok){const pane=$('#pane-pages');
+ for(const p of S.pages){if(tok!==thumbTok)return;const c=pane.querySelector(`.thumb[data-p="${p.num}"] canvas`);if(!c)continue;try{await drawThumb(p,c,tok)}catch(e){c._sc=0}}}
+let thumbRT=0;const thumbRO=new ResizeObserver(()=>{clearTimeout(thumbRT);thumbRT=setTimeout(()=>{if(S.pdf)drawThumbs(thumbTok)},250)});
+async function buildThumbs(){const tok=++thumbTok,pane=$('#pane-pages');pane.innerHTML='';thumbRO.disconnect();thumbRO.observe(pane);
+ for(const p of S.pages){const d=document.createElement('div');d.className='thumb';d.dataset.p=p.num;const sc=150/Math.max(p.w,p.h);const c=document.createElement('canvas');const w=Math.round(p.w*sc),h=Math.round(p.h*sc);c.width=w;c.height=h;c.style.width=w+'px';c.style.aspectRatio=w+'/'+h;d.appendChild(c);d.append('Page '+p.num);d.onclick=()=>gotoPage(p.num);pane.appendChild(d)}
  await new Promise(r=>setTimeout(r,600));
- for(const p of S.pages){if(tok!==thumbTok)return;try{const pg=await S.pdf.getPage(p.num);const c=pane.querySelector(`.thumb[data-p="${p.num}"] canvas`);const vp=pg.getViewport({scale:c.width/p.w});await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise}catch(e){}}}
+ await drawThumbs(tok)}
 
 /* ---------- zoom / navigation ---------- */
 function anchorAt(cx,cy){let best=null,bd=1e18;for(const p of S.pages){const r=p.el.getBoundingClientRect();const dx=cx<r.left?r.left-cx:cx>r.right?cx-r.right:0,dy=cy<r.top?r.top-cy:cy>r.bottom?cy-r.bottom:0,d=dx+dy;if(d<bd){bd=d;best={p,r}}if(d===0)break}
