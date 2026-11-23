@@ -1,10 +1,10 @@
 {
  "app": "PlanMark",
- "version": "1.4.0",
+ "version": "1.4.1",
  "minShell": "1.0.0",
- "notes": "Full QA sweep: 100+ fixes so PlanMark behaves like Bluebeam (typing on the drawing, handles, split screen, navigation, measuring, lists, Tool Chest, documents, Windows save/close/recovery); zoom to 6400%",
+ "notes": "Select Text works like any PDF reader (press on a word and drag; Ctrl+A selects the page); page thumbnails are drawn sharp at their real on-screen size",
  "files": {
-  "index.html": "65caa17c32c1519762d110b09e0a02b905bd60b6d3becc17086487120a3e529f",
+  "index.html": "026ece53ba20b2ec908d798e5cdf3073801a5c7cc186695e5e72ffdaa98423ad",
   "config.json": "ae2ca167ff35af4879d7a5e12308ea3e121e77a047e3e73b07ea208d4ce7dac7",
   "js/account.js": "80b1352e8cc45098033e039e8efad743f3e5cf5fc493351a7f89362e9bccc21c",
   "js/auto.js": "0baba16b744cef0738edae8af45b931fee7dbd0859fef02588b67c9e0a8c1607",
@@ -13,7 +13,7 @@
   "js/cad.js": "a351b9ebd74ed58929cc5e22aaa8c9ed797aaf19c4c28dfacc6431a52dcfcda0",
   "js/cloud.js": "8b123e736d86c88c5f2d08e5a0de54dab4dcd2b3860986431e7a8f9c9da6f6c5",
   "js/compare3.js": "2b6f939190af7fc853394221c4f3dc52b7f232b4e34ca71c78e543c7c134977c",
-  "js/core.js": "f157e4bad211c6f76f83738e53da526d5dbc0c41fa61af59da536fa9b1924193",
+  "js/core.js": "aad6027127ddfef5a4194baa5da56e8e8649ff7708541a8431c43b7b975603f4",
   "js/d3fontkit.js": "3ca6847789a28897f79c3568fb49874b1e59ec0f675a1499e1286cb1bc6da096",
   "js/d3fonts.js": "c74638e23c0c211fc10d36cc5e96ea854587df5aeb44091bca134110561800fa",
   "js/desktop.js": "4d7622f4032f538f5e5f2101cc4df09b4bd2c265066f07b64d2fe9c42c7671fd",
@@ -44,6 +44,7 @@
   "js/studio.js": "40722b9467be364724490d0a58162bfcd7007927ea96df7f773aee1e2baef920",
   "js/styles2.js": "80583c5b16914f30b57f48d53fcae524d8ebe12d8e6e2b4718b61ba512dc1806",
   "js/takeoff2.js": "a5b472611098ccbd652132ec6e2750b0384b0dfe8c58bf3c64a9428c1c61e076",
+  "js/textsel.js": "22e44af886100fbc30df4dc0e28e5b56324a79e8b09e39eb93723f276a26ed62",
   "js/toolbox.js": "2d091caf68e198ff44e5cb1e9dad251845edea9b9e3623ceddc12c1992a548e9",
   "js/views.js": "38288a129a0a179e392069825aca4c5d6bc610041c53e8f4826143f2a607f08c",
   "js/workspace.js": "8c7c9c380c7980cc39b44c4841ce78d1d12c48d0b1b53e3d35d04e4bac6d9fe2"
