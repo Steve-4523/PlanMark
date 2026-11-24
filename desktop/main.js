@@ -230,6 +230,7 @@ ipcMain.handle('pm:email', async (_e, o = {}) => {
 ipcMain.on('pm:version', (e) => { e.returnValue = app.getVersion(); });
 ipcMain.on('pm:web-version', (e) => { e.returnValue = updater.currentVersion(); });
 ipcMain.handle('pm:check-update', () => updater.check(true));
+ipcMain.handle('pm:shell-status', () => updater.shellStatus());
 // Printing: the page renders each sheet to an image; we lay them out one per printed page and open the system print dialog.
 ipcMain.handle('pm:print-images', async (e, pages) => {
   if (!Array.isArray(pages) || !pages.length) return { ok: false, reason: 'nothing to print' };
@@ -588,6 +589,7 @@ if (!gotLock) {
     Menu.setApplicationMenu(null);
     registerAppProtocol();
     app.on('browser-window-focus', () => { try { updater.check(); } catch (_) {} });
+    app.on('will-quit', () => { try { updater.installShellOnQuit(); } catch (_) {} });
     updater.init(WEB_ROOT, (st) => { for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('pm:update-ready', st); });
     setupDownloads();
     createWindow();
