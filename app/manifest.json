@@ -1,16 +1,19 @@
 {
  "app": "PlanMark",
- "version": "1.5.1",
+ "version": "1.5.3",
  "minShell": "1.0.0",
- "notes": "Olympia icon; color list; more on the Properties toolbar; add/delete corners (C/D); Esc back to Pan; Dimension after calibrating; Select Text in markups; Search Google; hide panels; centered navigation bar; dark title bar (new installer)",
+ "notes": "Revit (.rvt) files now open: Autodesk converts them online into drawing sheets (PDF for markup) and the 3D model",
  "files": {
-  "index.html": "95003dc9a821f61cfa6b23f23649eab27d68b86151839371303ea0a16a1951a3",
   "config.json": "ae2ca167ff35af4879d7a5e12308ea3e121e77a047e3e73b07ea208d4ce7dac7",
+  "img/icon-180.png": "2ed8b8fa65c3d9a44f30adcd39df1ebc3dd673d846d5fbadaf3e43e7a8db82ee",
+  "img/icon-32.png": "0b42f6ee2ff38a3ec6eb32d837dd32da7e5d1c2e41f41b9da335de76d27333d4",
+  "img/icon-512.png": "27800ebf7351b902204050570406f8c838e5ff9d410514014cb04ca170365fd9",
+  "index.html": "7238d94896aae1089a13692d3c6cc8d648570cc1a33f47141665230d5f147fc7",
   "js/account.js": "80b1352e8cc45098033e039e8efad743f3e5cf5fc493351a7f89362e9bccc21c",
   "js/auto.js": "0baba16b744cef0738edae8af45b931fee7dbd0859fef02588b67c9e0a8c1607",
   "js/batch.js": "6d8d07bc44e330524c01e268ec25ebe64d796b2f10fd1d1f25e6cfad74e728d2",
   "js/batch2.js": "5a7e8b612c926f1538380a3b18493e8372e3828ff57ea5adcae9aa368c9fe471",
-  "js/cad.js": "77a2fd9228f031896e579bbfbf7de08c7770960f06a4ab3f4acf3e4a9f84c059",
+  "js/cad.js": "21cf07073736a23cdb85dc68e4299e407fde45a9f6b746ca472cb05ace22d94e",
   "js/cloud.js": "8b123e736d86c88c5f2d08e5a0de54dab4dcd2b3860986431e7a8f9c9da6f6c5",
   "js/compare3.js": "2b6f939190af7fc853394221c4f3dc52b7f232b4e34ca71c78e543c7c134977c",
   "js/core.js": "7f1a4a0ceb7420605b27eeddadbffa1c7da4870f6977c1087a966b3b12ee821b",
@@ -43,6 +46,7 @@
   "js/qa4.js": "11ed046875d1ae872f409f2c2dd8f933c2593c09e80c8b5ead851f8d9694c609",
   "js/qa5.js": "1b09e06326f4ead3c88b3ed42a205b0d3bc4c17f41572a4c9ff4eb7a061b3ffa",
   "js/qa6.js": "0cbdb5f2a66b7208a6faa1871c6bd5cbf3427c3c9e48c7574ccb5b55189d554d",
+  "js/revit.js": "c233a1756903467dad52ff123eb9be22fd47263556338dc74ff87beeb54c13c6",
   "js/revu.js": "9510cdaae0ea6173f675a092ef4c28ae9d69c887549e0795d5e020bd16856847",
   "js/sets.js": "e9cfdfd05c6cba5abc819aca7e0478b2916dc1a705e8f14276a7bcbd7fb9fef2",
   "js/sharp.js": "3e9d295ac63f2bac2ffc6e4f4da747e921fcdd9cbefea105873373bdeaf2d6e8",
@@ -53,9 +57,6 @@
   "js/textsel.js": "9aad908ded629a99088757d16a98445d4523f24260439863c7630cbb08f0f273",
   "js/toolbox.js": "2d091caf68e198ff44e5cb1e9dad251845edea9b9e3623ceddc12c1992a548e9",
   "js/views.js": "6e3f3cd3d4d8e06e29357223ad90fca4df2ddad476448544a44b5870c5c5277f",
-  "js/workspace.js": "1ea27085436e15fbf266ad3e5b56d47a61e74c25f80d838b1593c5c7a8c6dcc7",
-  "img/icon-180.png": "2ed8b8fa65c3d9a44f30adcd39df1ebc3dd673d846d5fbadaf3e43e7a8db82ee",
-  "img/icon-32.png": "0b42f6ee2ff38a3ec6eb32d837dd32da7e5d1c2e41f41b9da335de76d27333d4",
-  "img/icon-512.png": "27800ebf7351b902204050570406f8c838e5ff9d410514014cb04ca170365fd9"
+  "js/workspace.js": "1ea27085436e15fbf266ad3e5b56d47a61e74c25f80d838b1593c5c7a8c6dcc7"
  }
 }
