@@ -53,6 +53,9 @@
   "js/textsel.js": "9aad908ded629a99088757d16a98445d4523f24260439863c7630cbb08f0f273",
   "js/toolbox.js": "2d091caf68e198ff44e5cb1e9dad251845edea9b9e3623ceddc12c1992a548e9",
   "js/views.js": "6e3f3cd3d4d8e06e29357223ad90fca4df2ddad476448544a44b5870c5c5277f",
-  "js/workspace.js": "1ea27085436e15fbf266ad3e5b56d47a61e74c25f80d838b1593c5c7a8c6dcc7"
+  "js/workspace.js": "1ea27085436e15fbf266ad3e5b56d47a61e74c25f80d838b1593c5c7a8c6dcc7",
+  "img/icon-180.png": "2ed8b8fa65c3d9a44f30adcd39df1ebc3dd673d846d5fbadaf3e43e7a8db82ee",
+  "img/icon-32.png": "0b42f6ee2ff38a3ec6eb32d837dd32da7e5d1c2e41f41b9da335de76d27333d4",
+  "img/icon-512.png": "27800ebf7351b902204050570406f8c838e5ff9d410514014cb04ca170365fd9"
  }
 }
