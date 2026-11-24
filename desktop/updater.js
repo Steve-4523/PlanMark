@@ -107,6 +107,8 @@ async function check(manual) {
       man = JSON.parse((await fetchBuf(raw('manifest.json'))).toString('utf8'));
     }
     if (!man || !man.version || !man.files) throw new Error('Bad manifest');
+    // A newer Windows app (the part that opens the window) is fetched in the background and installed when PlanMark closes.
+    if (man.shell) checkShell(man.shell, src.type === 'url' ? (p) => `${src.base}/${p}` : (p) => `https://raw.githubusercontent.com/${src.owner}/${src.repo}/${sha}/${p}`).catch(() => {});
     if (man.minShell && cmpVer(app.getVersion(), man.minShell) < 0) {
       lastStatus = { state: 'shell-too-old', version: man.version, minShell: man.minShell };
       return lastStatus;
@@ -153,4 +155,46 @@ async function check(manual) {
   }
 }
 
-module.exports = { init, resolve, check, currentVersion, status: () => lastStatus };
+// ---------------------------------------------------------------------------------------------------------
+// Updating the app itself, with no reinstall by hand.
+// The manifest may name a newer installer: { shell: { version, path, sha256 } } (path is from the repository root).
+// It is downloaded once, checked against its SHA-256, kept in userData/shell-update, and run silently (NSIS /S,
+// same install folder, no questions) a few seconds after PlanMark is closed. The next start is the new version.
+let shellBusy = false, shellReady = null;   // { file, version }
+async function checkShell(sh, at) {
+  if (shellBusy || !sh || !sh.version || !sh.path || !/^[0-9a-f]{64}$/i.test(sh.sha256 || '')) return;
+  if (cmpVer(sh.version, app.getVersion()) <= 0 || String(sh.path).includes('..')) return;
+  if (shellReady && shellReady.version === sh.version) return;
+  shellBusy = true;
+  try {
+    const dir = path.join(app.getPath('userData'), 'shell-update');
+    fs.mkdirSync(dir, { recursive: true });
+    const name = 'PlanMark-Setup-' + String(sh.version).replace(/[^0-9a-z.\-]/gi, '_') + '.exe', file = path.join(dir, name);
+    let ok = false;
+    try { ok = sha256(fs.readFileSync(file)) === sh.sha256.toLowerCase(); } catch (_) {}
+    if (!ok) {
+      const buf = await fetchBuf(at(sh.path));
+      if (sha256(buf) !== sh.sha256.toLowerCase()) throw new Error('Checksum mismatch for the new app installer');
+      fs.writeFileSync(file + '.part', buf); fs.renameSync(file + '.part', file);
+    }
+    for (const f of fs.readdirSync(dir)) if (f !== name) { try { fs.rmSync(path.join(dir, f), { force: true }); } catch (_) {} }
+    shellReady = { file, version: sh.version };
+    lastShell = { state: 'ready', version: sh.version };
+  } catch (e) { lastShell = { state: 'error', message: String(e && e.message || e) }; }
+  finally { shellBusy = false; }
+}
+let lastShell = { state: 'idle' };
+// called when PlanMark is quitting: hand over to the installer (Windows only)
+function installShellOnQuit() {
+  if (!shellReady || process.platform !== 'win32' || process.env.PLANMARK_NO_SHELL_INSTALL) return false;
+  try {
+    const { spawn } = require('child_process');
+    // wait ~3 s so PlanMark has fully closed, then install silently into the same folder
+    const cmd = `/d /s /c "ping -n 4 127.0.0.1 >nul & "${shellReady.file}" /S"`;
+    spawn(process.env.ComSpec || 'cmd.exe', [cmd], { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true }).unref();
+    shellReady = null;
+    return true;
+  } catch (_) { return false; }
+}
+
+module.exports = { init, resolve, check, currentVersion, status: () => lastStatus, shellStatus: () => lastShell, installShellOnQuit };

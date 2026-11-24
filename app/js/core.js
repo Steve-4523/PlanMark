@@ -705,7 +705,9 @@ function calibrateDialog(page,ptLen){const cur=scaleFor(page);const paperIn=ptLe
  [{label:'Cancel',cancel:1},{label:'Calibrate',pri:1,fn:md=>{const u=md.querySelector('#cU').value;let meters;
   if(u==='ftin')meters=((+md.querySelector('#cFt').value||0)*12+(+md.querySelector('#cIn').value||0))*0.0254;else meters=(+md.querySelector('#cVal').value||0)*UNITS[u].m;
   if(!(meters>0)){toast('Enter a length greater than zero');return false}
-  const perPt=meters/ptLen,ratio=perPt/PT_M;applyScale({perPt,unit:u,label:`Custom 1:${ratio>=10?Math.round(ratio):ratio.toFixed(2)}`},md,page)}}]);
+  const perPt=meters/ptLen,ratio=perPt/PT_M;applyScale({perPt,unit:u,label:`Custom 1:${ratio>=10?Math.round(ratio):ratio.toFixed(2)}`},md,page);
+  // straight to the Dimension tool so the new scale can be checked against another known length
+  setTimeout(()=>{try{setTool('dimension');toast('Scale set. Draw a dimension over another known length to check it.')}catch(e){}},0)}}]);
  const sw=()=>{const ftin=$('#cU').value==='ftin';$('#cFI').style.display=ftin?'flex':'none';$('#cV').style.display=ftin?'none':'block'};$('#cU').onchange=sw;sw()}
 function scaleDialog(){if(!S.pages.length)return;const cur=scaleFor(S.cur);
  const opts=`<optgroup label="Architectural">${ARCH.map(([l,v])=>`<option value="a:${v}">${l}" = 1'-0"</option>`).join('')}</optgroup><optgroup label="Engineering">${ENG.map(n=>`<option value="e:${n}">1" = ${n}'</option>`).join('')}</optgroup><optgroup label="Metric">${METRIC.map(n=>`<option value="m:${n}">1:${n}</option>`).join('')}</optgroup><optgroup label="Other"><option value="f:1">Full size 1:1</option></optgroup>`;

@@ -246,6 +246,8 @@ async function selectTextIn(n,box){try{const{items,vp}=await pageText(n);const r
 L3.selectTextIn=selectTextIn;
 function searchFor(q){q=String(q||'').replace(/\s+/g,' ').trim();if(!q)return;const tab=$('#left .tabs [data-tab="search"]');if(tab)tab.click();const box=$('#sq');if(!box)return;box.value=q.slice(0,200);try{doSearch()}catch(e){box.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))}toast('Searching for “'+q.slice(0,40)+'”')}
 L3.searchFor=searchFor;
+// opens in your web browser (the Windows app hands web links to the default browser)
+function searchGoogle(t){const q=String(t||'').replace(/\s+/g,' ').trim().slice(0,500);if(!q)return;window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank','noopener')}
 async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Copied')}catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('Copied')}catch(_){toast('Copy failed')}ta.remove()}L3.clip=t}
 function linkFromSelection(){const t=L3.tsel;if(!t)return;const b=t.rects.reduce((a,r)=>a?[Math.min(a[0],r[0]),Math.min(a[1],r[1]),Math.max(a[2],r[2]),Math.max(a[3],r[3])]:r.slice(),null);
  const m=newMarkup('hlink',t.page,[[b[0]-1,b[1]-1],[b[2]+1,b[3]+1]],S.defaults.hlink||{stroke:'#2563eb',width:1});pushUndo();S.markups.push(m);m.subject='Hyperlink';commit();setTool('select');setSel([m.id]);actionDialog(m,{type:'page',page:matchLabel(t.text)||Math.min(S.cur+1,S.pages.length)})}
@@ -260,7 +262,7 @@ function inTsel(n,pt){const t=L3.tsel;return t&&t.page===n&&t.rects.some(r=>pt[0
 viewer.addEventListener('contextmenu',e=>{const p=S.pages.length?pageFromEvent(e):null;if(!p)return;const pt=toPt(e,p);
  if(inTsel(p.num,pt)){e.preventDefault();e.stopImmediatePropagation();const t=L3.tsel.text;W().ctx&&W().ctx(e.clientX,e.clientY,[]);
   setTimeout(()=>{if(!$('#wsCtx')){const c=document.createElement('div');c.id='wsCtx';c.style.cssText=`position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:95;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 0;box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:13px;min-width:200px`;document.body.appendChild(c)}
-   const c=$('#wsCtx');c.innerHTML='';ctxRows([{label:`Search for “${t.slice(0,30)}${t.length>30?'…':''}”`,run:()=>searchFor(t)},{label:'Copy text',key:'Ctrl+C',run:()=>copyText(t)},{label:'Create hyperlink here…',run:linkFromSelection}]);c.firstChild&&c.firstChild.remove()},0);return}},true);
+   const c=$('#wsCtx');c.innerHTML='';ctxRows([{label:`Search for “${t.slice(0,30)}${t.length>30?'…':''}”`,run:()=>searchFor(t)},{label:`Search Google for “${t.slice(0,30)}${t.length>30?'…':''}”`,run:()=>searchGoogle(t)},{label:'Copy text',key:'Ctrl+C',run:()=>copyText(t)},{label:'Create hyperlink here…',run:linkFromSelection}]);c.firstChild&&c.firstChild.remove()},0);return}},true);
 // after the regular right-click menus open, add our items
 document.addEventListener('contextmenu',e=>{if(!S.pages.length)return;const inViewer=(e.composedPath?e.composedPath():[]).includes(viewer)||viewer.contains(e.target);if(!inViewer)return;
  const mk=e.target.closest('.mk'),m=mk&&byId(mk.dataset.id);
