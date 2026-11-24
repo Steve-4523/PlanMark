@@ -61,3 +61,17 @@ addEventListener('pointerup',()=>{setTimeout(()=>{if(SNAPI&&!S.drawing&&(S.tool=
 viewer.addEventListener('pointerleave',()=>{if(SNAPI&&!S.drawing){const n=SNAPI.page;SNAPI=null;redrawPage(n)}});
 window.PMEditPts={sideAt,cornerAt};
 })();
+/* Mouse wheel: zooms the drawing (Bluebeam's default), except over the scroll bars, where it scrolls —
+   up/down over the right-hand bar, sideways over the bottom bar. */
+(function(){
+function onBar(v,e){const r=v.getBoundingClientRect();let sbW=v.offsetWidth-v.clientWidth,sbH=v.offsetHeight-v.clientHeight;
+ // overlay scroll bars (take no room): treat the 14px strip at the edge as the bar when the page can scroll that way
+ if(!sbW&&v.scrollHeight>v.clientHeight+1)sbW=14;if(!sbH&&v.scrollWidth>v.clientWidth+1)sbH=14;
+ const right=sbW>0&&e.clientX>=r.right-sbW-2&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;
+ const bottom=sbH>0&&e.clientY>=r.bottom-sbH-2&&e.clientY<=r.bottom&&e.clientX>=r.left&&e.clientX<=r.right;return right?'v':bottom?'h':''}
+addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey)return;const v=e.target&&e.target.closest&&e.target.closest('#viewer,#viewer2');if(!v)return;
+ const bar=onBar(v,e);if(!bar)return;
+ e.stopPropagation();e.preventDefault();
+ const px=e.deltaMode===1?e.deltaY*40:e.deltaMode===2?e.deltaY*v.clientHeight:e.deltaY;
+ if(bar==='v')v.scrollTop+=px;else v.scrollLeft+=(e.deltaX||px)},{capture:true,passive:false});
+})();
