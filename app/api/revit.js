@@ -100,6 +100,8 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).end();
   res.setHeader('Cache-Control', 'no-store');
   try {
+    // Health check (no sign-in, no data): are the Autodesk keys accepted?
+    if ((req.query || {}).a === 'ping') { await apsToken(); await ensureBucket(); return res.json({ ok: true, bucket: bucket() }); }
     if (!(await signedIn(req))) return res.status(401).json({ error: 'Sign in with your Olympia account to open Revit files.' });
     const q = req.query || {};
     const a = q.a;
