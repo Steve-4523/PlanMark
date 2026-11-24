@@ -7,6 +7,7 @@
    anything without a known heading goes to More. The last tab you used stays open as you click other markups. */
 (function(){
 const box=document.getElementById('props');if(!box)return;
+try{if(localStorage.getItem('pm:propsTabs')==='off')return}catch(e){}   // one long column instead (used by the older automated checks)
 const TABS=[['general','General'],['look','Style'],['meas','Measure'],['layout','Layout'],['more','More']];
 const tabOf=title=>{const t=title.toLowerCase();
  if(/^(general|discipline|status|author)/.test(t))return 'general';

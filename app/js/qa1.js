@@ -100,7 +100,9 @@ const tcss=document.createElement('style');tcss.textContent=`html body.dl #pane-
 html body.dl #pane-pages .thumb canvas{width:100%!important;max-width:var(--wsTh,130px)!important}
 html body.dl #pane-pages .thumb{min-width:0}html body.dl #pane-pages .thumb .dlSc,html body.dl #pane-pages .thumb .dlNum{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`;document.head.appendChild(tcss);
 function thumbW(){const s=document.getElementById('wsThS');return s?+s.value:130}
-function applyThumbSize(){const pane=document.getElementById('pane-pages');if(pane)pane.style.setProperty('--wsTh',Math.min(thumbW(),Math.max(60,pane.clientWidth-40))+'px')}
+function applyThumbSize(){const pane=document.getElementById('pane-pages');if(!pane)return;const cw=pane.clientWidth;pane.style.setProperty('--wsTh',(cw?Math.min(thumbW(),Math.max(60,cw-40)):thumbW())+'px')}
+// a panel that starts closed has no width yet: size the thumbnails again once it opens or is resized
+try{const pn=document.getElementById('pane-pages');if(pn)new ResizeObserver(()=>applyThumbSize()).observe(pn)}catch(e){}
 let thTok=0;async function sharpenThumbs(){const tok=++thTok,pane=document.getElementById('pane-pages');if(!pane||!S.pdf)return;const dpr=Math.min(devicePixelRatio||1,2);
  for(const t of pane.querySelectorAll('.thumb')){if(tok!==thTok)return;const c=t.querySelector('canvas'),p=S.pages[+t.dataset.p-1];if(!c||!p)continue;
   const need=Math.round(c.getBoundingClientRect().width*dpr);if(need<=c.width*1.08)continue;
@@ -122,3 +124,5 @@ window.addEventListener('pointerdown',e=>{const a=document.activeElement;if(!a||
 
 window.PMQA1={syncLabels,curText,resolve};
 })();
+// clicking the drawing always leaves the page box (some tools stop the browser from moving the focus)
+try{['viewer','viewer2'].forEach(id=>{const v=document.getElementById(id);if(v)v.addEventListener('pointerdown',()=>{const pi=document.getElementById('pageIn');if(pi&&document.activeElement===pi)pi.blur()},true)})}catch(e){}

@@ -1,10 +1,10 @@
 {
  "app": "PlanMark",
- "version": "1.4.5",
+ "version": "1.5.0",
  "minShell": "1.0.0",
- "notes": "DWG, DXF, IFC and Revit files open when dragged anywhere onto PlanMark (not only PDFs)",
+ "notes": "Bluebeam Revu look: one menu row with a PlanMark menu, Properties toolbar, Revu-style navigation and status bars, tool strip in Revu's order, panels start closed",
  "files": {
-  "index.html": "7992e210e2df402e6e9128cf83ba6430ed38576a38a1d8fb72ad1b4a35e5d777",
+  "index.html": "48938d1641f7b789998a06309d6ea8d5ce22adcd5d781327b9197fba867a65de",
   "config.json": "ae2ca167ff35af4879d7a5e12308ea3e121e77a047e3e73b07ea208d4ce7dac7",
   "js/account.js": "80b1352e8cc45098033e039e8efad743f3e5cf5fc493351a7f89362e9bccc21c",
   "js/auto.js": "0baba16b744cef0738edae8af45b931fee7dbd0859fef02588b67c9e0a8c1607",
@@ -25,7 +25,7 @@
   "js/i18n-es.js": "7c10e81f1865e7dc2dc6b52bde82c303ba04ef275f865676356482e11fa22327",
   "js/layers.js": "08c07accd9302b32ad21d1336f762a119a04f1eca155e1ef441081e9055a2a4c",
   "js/light.js": "ebcecf2612d4d530698cd9c64ad4d577a0e9ecdf03d479416799693e657dff43",
-  "js/links3.js": "abdea2ba9fc0868e597f866e9f4ed248e531c5557666c336d5338e081b3c3865",
+  "js/links3.js": "3ee24c199f8892a561810dd5f30ea8cbb952b635cb5a249a6a6eccfa997f99ea",
   "js/listpro.js": "3cb69a8e984c1c5a04bcb3553f6aef0ed5cc0f2a64e76d080f099e58fbedf4c8",
   "js/measpro.js": "268c1ee3d214307ed345866360b8a023a24623b115c93e40edcf970e0eb6583b",
   "js/ocr.js": "22b7624282b8a05720f380b4720180d29e4056491b13eff546dada33b44fc62f",
@@ -33,13 +33,14 @@
   "js/panels.js": "301dee83b79db60893b9651569d5e75ed706648f44debcd4430a20fa8647647f",
   "js/pdfedit.js": "080749a5d1bf9a2676797314b33207fbc3317267ed22dd6f7e51bc31a82844b3",
   "js/projects.js": "20ee06b7e25c5d477f1ed9267d0f64e82d700239ea6da3b2257f48d7554f0426",
-  "js/propstabs.js": "a1ab81fd0845827b8b1d26ffbc854fb21d4f598f62ca636913b516fe0ab3eddf",
-  "js/qa1.js": "8c80f37f9dc54f57e67407e33b79abb822abc6dc170c96e05a745ba84fa7999c",
+  "js/propstabs.js": "1bbffee56852d29eb0a9efe8032040146a136cf76075686204b583ba0bc9a638",
+  "js/qa1.js": "f7fa79ef360475b04478ef51399ea2521c20cdedcd9dd3190ffd3a7b4acf7afb",
   "js/qa2.js": "4adeff44c41cded8f75218f60302115caac72a98a223e2796485f6d54fe1a933",
   "js/qa3.js": "54f31a0962eef42976869398cf547712a4ba6034f12d2312f9b8f9105e41f2b9",
   "js/qa4.js": "11ed046875d1ae872f409f2c2dd8f933c2593c09e80c8b5ead851f8d9694c609",
   "js/qa5.js": "1b09e06326f4ead3c88b3ed42a205b0d3bc4c17f41572a4c9ff4eb7a061b3ffa",
   "js/qa6.js": "0cbdb5f2a66b7208a6faa1871c6bd5cbf3427c3c9e48c7574ccb5b55189d554d",
+  "js/revu.js": "df52fa96698cfd8ade076c8b880a751766951c470469e7c85a8d57272c53a0cf",
   "js/sets.js": "e9cfdfd05c6cba5abc819aca7e0478b2916dc1a705e8f14276a7bcbd7fb9fef2",
   "js/sharp.js": "3e9d295ac63f2bac2ffc6e4f4da747e921fcdd9cbefea105873373bdeaf2d6e8",
   "js/snap.js": "bdb8bfdce6a098018d41da79235790dbf536608f8abc8850582da1652ad05b78",
@@ -49,6 +50,6 @@
   "js/textsel.js": "9aad908ded629a99088757d16a98445d4523f24260439863c7630cbb08f0f273",
   "js/toolbox.js": "2d091caf68e198ff44e5cb1e9dad251845edea9b9e3623ceddc12c1992a548e9",
   "js/views.js": "6e3f3cd3d4d8e06e29357223ad90fca4df2ddad476448544a44b5870c5c5277f",
-  "js/workspace.js": "6753ab9a343a8826e8d9cb9efbea339ed69572cca8e40284d107ef13297f0a00"
+  "js/workspace.js": "1ea27085436e15fbf266ad3e5b56d47a61e74c25f80d838b1593c5c7a8c6dcc7"
  }
 }

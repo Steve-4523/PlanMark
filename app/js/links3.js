@@ -449,9 +449,9 @@ function tourSteps(){return[
  {sel:'#wsMenu',t:'Menu bar',b:'Every command lives here. Tap Alt, then the underlined letter, to open a menu from the keyboard. Ctrl+K opens Preferences.'},
  {sel:'#left .tabs',t:'Panels',b:isDL()?'Thumbnails, bookmarks, search, layers, measurements, Tool Chest and more. Click an icon to open its panel; click it again to hide it.':'Thumbnails, bookmarks, search, layers, measurements, Tool Chest and more — pick a tab to switch panels.'},
  {sel:'#ribbon',t:'Markup and measure tools',b:'Pick a tool, then draw on the drawing. Tools have single-key shortcuts (R rectangle, C cloud, T text, Q callout, Shift+Alt+L length…).'},
- {sel:isDL()?'#dlNav':'#topbar',t:'Navigation',b:isDL()?'Page layout and split screen, pan/select, page arrows and the page box, back/forward, zoom and the page scale.':'Open and save, zoom, page arrows and split screen.'},
+ {sel:isDL()?'#dlNav':'#topbar',t:'Navigation',b:isDL()?'Split screen, Pan / Select / Select Text / Zoom, page arrows and the page box, back/forward, the dimmer, page size and scale.':'Open and save, zoom, page arrows and split screen.'},
  {sel:isDL()?'#dlMLBtn':'#mlist',t:'Markups list',b:'Every markup in a sortable, filterable table with totals for takeoff — export it to Excel or CSV.'},
- {sel:isDL()?'#bRight':'#right',t:'Properties',b:isDL()?'Select a markup and its Properties appear: colors, text, scale, layout, actions. This button keeps the panel open.':'Select a markup to change its colors, text, scale, layout and actions.'},
+ {sel:isDL()?'#topbar':'#right',t:'Properties',b:isDL()?'Select a markup and its colors, line width, style, opacity and font appear on this Properties toolbar. Alt+P opens the full Properties panel.':'Select a markup to change its colors, text, scale, layout and actions.'},
  {sel:'#bAcct',t:'Your account',b:'Sign in once and your settings, tools and profiles follow you to any computer.'},
  {sel:'#wsMenu [data-m="Help"]',t:'Help',b:'Keyboard shortcuts, what\'s new, and this tour again any time.'}].filter(s=>{const el=$(s.sel);if(!el)return false;const r=el.getBoundingClientRect();return r.width>0&&r.height>0})}
 let tour=null;
