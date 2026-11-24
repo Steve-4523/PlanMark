@@ -185,7 +185,7 @@ function panelMenu(e){const tabs=[...$$('#left .tabs [data-tab]')];const m=docum
  document.body.appendChild(m);const close=ev=>{if(!m.contains(ev.target)){m.remove();removeEventListener('pointerdown',close,true)}};setTimeout(()=>addEventListener('pointerdown',close,true),0);
  m.onclick=ev=>{const d=ev.target.closest('[data-t]');if(!d)return;const b=$(`#left .tabs [data-tab="${d.dataset.t}"]`);b&&b.click();m.remove()}}
 function splitToggle(o){const v=window.PMViews;if(!v)return;const box=$('#splitBox');const isOn=box&&box.classList.contains('on');const same=isOn&&box.classList.contains('h')===(o==='h');
- if(same)v.closeSplit();else v.openSplit(o);navState()}
+ v.openSplit(o);navState()}   // already split: splits the pane you are in again (like Bluebeam)
 function fitIfNeeded(){window.dispatchEvent(new Event('resize'))}
 function scaleText(n){try{const s=scaleFor(n);return s.none?'Scale Not Set':(s.label||'Scaled')}catch(e){return''}}
 function decorateThumbs(){if(!document.body.classList.contains('dl'))return;

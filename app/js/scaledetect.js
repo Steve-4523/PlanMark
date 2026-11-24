@@ -146,18 +146,19 @@ async function propose(n){if(!S.pdf)return null;let rd=await readPage(n);let sca
 
 // ---- the offer, a small bar over the drawing (only for pages without a scale)
 const dismissed=new Set();let busy=0;
-const css=document.createElement('style');css.textContent=`#sdBar{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:30;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:8px 10px;font-size:12.5px;display:flex;align-items:center;gap:10px;max-width:min(860px,92%)}
+const css=document.createElement('style');css.textContent=`#sdBar{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:30;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.35);padding:5px 8px;font-size:12px;display:flex;align-items:center;gap:6px;max-width:calc(100% - 40px);white-space:nowrap}#sdBar>span{min-width:0;overflow:hidden;text-overflow:ellipsis}#sdBar .btn{height:24px;padding:0 8px}
 #sdBar b{font-weight:600}#sdBar .ok{color:#3fb950}#sdBar .warn{color:#e3a008}#sdBar .mut{color:var(--mut)}#sdBar button{white-space:nowrap}`;document.head.appendChild(css);
+const _usb=updateScaleBtn;updateScaleBtn=function(){const r=_usb.apply(this,arguments);try{const sc=scaleFor(S.cur);if(sc&&!sc.none)hideBar()}catch(e){}return r};
 function hideBar(){const b=document.getElementById('sdBar');if(b)b.remove()}
 function verdict(p){const t=p.test||{};if(!t.tested)return`<span class="mut">no written dimensions to test it against</span>`;
  if(t.agree>=Math.max(1,Math.ceil(t.tested*.5)))return`<span class="ok">✓ checked: ${t.agree} of ${t.tested} dimension${t.tested>1?'s':''} on the sheet match</span>`;
  return`<span class="warn">⚠ only ${t.agree} of ${t.tested} dimensions match</span>`}
-function showBar(p){hideBar();const host=document.getElementById('viewWrap')||viewer.parentElement;if(!host)return;
+function showBar(p){hideBar();const host=document.getElementById('mainPane')||viewer.parentElement;if(!host)return;
  const d=document.createElement('div');d.id='sdBar';
  const what=p.source==='sheet'?`Scale on this sheet: <b>${esc(p.sc.label)}</b>`:`Scale from the dimensions on this sheet: <b>${esc(p.sc.label)}</b>`;
  const extra=p.alt?` <span class="warn">— the dimensions point to ${esc(p.alt.sc.label)}</span>`:p.others&&p.others.length?` <span class="mut">(also on the sheet: ${p.others.slice(0,3).map(esc).join(', ')})</span>`:'';
  d.innerHTML=`<span>${what} · ${verdict(p)}${extra}</span><button class="btn pri" data-a="page">Use for this page</button><button class="btn" data-a="all">All pages</button>${p.alt?`<button class="btn" data-a="alt">Use ${esc(p.alt.sc.label)}</button>`:''}<button class="btn" data-a="cal">Calibrate</button><button class="btn" data-a="x" title="Not now">✕</button>`;
- if(getComputedStyle(host).position==='static')host.style.position='relative';host.appendChild(d);
+ host.appendChild(d);   // a small card at the bottom of the drawing
  d.onclick=e=>{const a=e.target.closest('[data-a]');if(!a)return;const k=a.dataset.a;dismissed.add(S.fileKey+'|'+p.page);hideBar();
   if(k==='page'||k==='all'||k==='alt'){const sc=Object.assign({},k==='alt'?p.alt.sc:p.sc);if(k==='all')S.scales={all:sc};else S.scales[p.page]=sc;saveScales();commit();updateScaleBtn();renderProps();
    toast(`Scale set: ${sc.label}${k==='all'?' (all pages)':''}`);if(window.PMRevu)PMRevu.status()}
@@ -166,7 +167,7 @@ async function check(){hideBar();if(!S.pdf||!S.pages.length)return;const n=S.cur
  const my=++busy;let p;try{p=await propose(n)}catch(e){return}if(my!==busy||S.cur!==n||S.scales[n]||S.scales.all)return;if(p&&p.sc)showBar(p)}
 let t=0;const later=()=>{clearTimeout(t);t=setTimeout(check,700)};
 H.open.push(()=>{cache.clear();hideBar();later()});
-setInterval(()=>{if(S.pdf&&!document.getElementById('sdBar'))later.last!==S.cur&&(later.last=S.cur,later())},1000);
+setInterval(()=>{const b=document.getElementById('sdBar');if(b&&S.pdf){try{const sc=scaleFor(S.cur);if(sc&&!sc.none)hideBar()}catch(e){}}if(S.pdf&&!document.getElementById('sdBar'))later.last!==S.cur&&(later.last=S.cur,later())},1000);
 // Tools > Check scale: runs the same test on the current page whatever its scale is
 async function checkNow(){if(!S.pdf)return;const n=S.cur,cur=scaleFor(n);let rd=await readPage(n),dims;
  if(!rd.items.length){toast('Reading the scanned sheet…');const items=await scanText(n,rd);rd=Object.assign({},rd,{items});dims=await rasterDims(n,items)}else dims=dimensions(rd);

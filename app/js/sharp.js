@@ -41,8 +41,7 @@ const _rp=renderPage;renderPage=async function(p){const r=await _rp.apply(this,a
 const _sz=setZoom;setZoom=function(){const r=_sz.apply(this,arguments);for(const p of S.pages)if(p.sharp)p.sharpKey='';schedule();return r};
 H.open.push(()=>{for(const p of S.pages||[])p.sharp=null});
 // the second split pane gets the same treatment
-const P2C={v:()=>document.getElementById('viewer2'),z:()=>{const P=window.PMViews&&PMViews.P2;return P?P.zoom:1},doc:()=>{const V=window.PMViews;if(!V||!V.P2.on)return null;const t=V.tabs.find(t=>t.id===V.P2.tabId);return t?(t.id===V.curTab?S.pdf:t.st&&t.st.pdf):null}};
-let T2=0;function run2(){clearTimeout(T2);T2=setTimeout(()=>{const V=window.PMViews;if(!V||!V.P2.on||V.P2.rot)return;for(const q of V.P2.pages){if(q.vis)sharpen(q,P2C).catch(()=>{});else drop(q)}},140)}
-H.ready.push(()=>{const v2=document.getElementById('viewer2');if(v2)v2.addEventListener('scroll',run2,{passive:true})});
+const ctxOf=P=>({v:()=>P.v||document.getElementById('viewer2'),z:()=>P.zoom,doc:()=>{const V=window.PMViews;if(!V||!V.P2.on)return null;const t=V.tabs.find(t=>t.id===P.tabId);return t?(t.id===V.curTab?S.pdf:t.st&&t.st.pdf):null}});
+let T2=0;function run2(){clearTimeout(T2);T2=setTimeout(()=>{const V=window.PMViews;if(!V||!V.P2.on)return;for(const P of V.panes||[V.P2]){if(P.rot)continue;const c=ctxOf(P);for(const q of P.pages){if(q.vis)sharpen(q,c).catch(()=>{});else drop(q)}}},140)}
 window.PMSharp={run,want,run2};
 })();

@@ -366,7 +366,7 @@ L3.copyPagesTo=copyPagesTo;
 
 /* =========================== 7. SPLIT VIEW =========================== */
 function splitOn(){const b=$('#splitBox');return!!(b&&b.classList.contains('on'))}
-function toggleSplit(){const v=Vw();if(!S.pdf)return toast('Open a PDF first');if(!splitOn()){v.openSplit&&v.openSplit();return}const o=(v.V&&v.V.orient)==='h'?'v':'h';v.openSplit(o);toast(o==='h'?'Split: top / bottom':'Split: side by side')}
+function toggleSplit(){const v=Vw();if(!S.pdf)return toast('Open a PDF first');if(!splitOn()){v.openSplit&&v.openSplit();return}const o=(v.V&&v.V.orient)==='h'?'v':'h';if(v.toggleOrient)v.toggleOrient();else v.openSplit(o);toast(o==='h'?'Split: top / bottom':'Split: side by side')}
 function balance(){const v=Vw();if(!splitOn())return toast('Split the view first (Ctrl+2 or Ctrl+3)');if(v.balance){v.balance();toast('Panes balanced');return}if(v.V)v.V.splitRatio=.5;const w=$('#viewer2wrap');if(w)w.style.flex='0 0 50%';try{v.setDim(v.V.dim)}catch(e){}setTimeout(()=>{window.dispatchEvent(new Event('resize'));try{scheduleRender()}catch(e){}},30);toast('Panes balanced')}
 L3.toggleSplit=toggleSplit;L3.balance=balance;
 // click into the other pane to work in it (it becomes the editable pane)

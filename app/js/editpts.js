@@ -69,7 +69,7 @@ function onBar(v,e){const r=v.getBoundingClientRect();let sbW=v.offsetWidth-v.cl
  if(!sbW&&v.scrollHeight>v.clientHeight+1)sbW=14;if(!sbH&&v.scrollWidth>v.clientWidth+1)sbH=14;
  const right=sbW>0&&e.clientX>=r.right-sbW-2&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;
  const bottom=sbH>0&&e.clientY>=r.bottom-sbH-2&&e.clientY<=r.bottom&&e.clientX>=r.left&&e.clientX<=r.right;return right?'v':bottom?'h':''}
-addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey)return;const v=e.target&&e.target.closest&&e.target.closest('#viewer,#viewer2');if(!v)return;
+addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey)return;const v=e.target&&e.target.closest&&e.target.closest('#viewer,.vw2');if(!v)return;
  const bar=onBar(v,e);if(!bar)return;
  e.stopPropagation();e.preventDefault();
  const px=e.deltaMode===1?e.deltaY*40:e.deltaMode===2?e.deltaY*v.clientHeight:e.deltaY;

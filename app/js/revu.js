@@ -65,7 +65,7 @@ body.dl.light #tabBar .dtab.on{background:#fff}
 #rvTabs{display:none}
 body.dl #rvTabs{display:flex;margin-left:auto;align-items:center;justify-content:center;width:28px;height:100%;background:none;border:0;color:var(--text);cursor:pointer;flex-shrink:0}
 /* the drawing fills the work area */
-body.dl #viewer,body.dl #viewer2{background:var(--rvBg)}
+body.dl #viewer,body.dl .vw2{background:var(--rvBg)}
 body.dl .page>.pn,body.dl .pg2>.pn{display:none!important}
 body.dl #ribbon{background:var(--rvBg);border-left:1px solid var(--rvLine)}
 body.dl #ribbon .rvNavGrp{display:none!important}
