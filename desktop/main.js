@@ -180,6 +180,12 @@ function readLock(p) {
   L.stale = !L.time || Date.now() - L.time > 24 * 3600 * 1000 || (L.computer === host && L.pid !== process.pid && !pidAlive(L.pid));
   return L;
 }
+// the page tells the shell its menu-row colours (dark or light theme) so the window buttons match
+ipcMain.handle('pm:titlebar', (e, o = {}) => {
+  const w = BrowserWindow.fromWebContents(e.sender); if (!w || !w.setTitleBarOverlay) return false;
+  const hex = (v, d) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v : d);
+  try { w.setTitleBarOverlay({ color: hex(o.color, '#000000'), symbolColor: hex(o.symbolColor, '#ffffff'), height: Math.max(20, Math.min(48, +o.height || 26)) }); return true; } catch (_) { return false; }
+});
 ipcMain.handle('pm:lock-check', (_e, p) => (okPdf(p) ? readLock(p) : null));
 ipcMain.handle('pm:lock-acquire', (_e, p, user) => {
   if (!okPdf(p)) return { ok: false, reason: 'not a PDF on disk' };
@@ -413,7 +419,11 @@ function createWindow(extra) {
     title: 'PlanMark',
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#2e2e2e',
+    // like Revu: no white Windows title bar; PlanMark's own dark menu row is the title bar, with the
+    // minimise / maximise / close buttons drawn on its right end
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: '#000000', symbolColor: '#ffffff', height: 26 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

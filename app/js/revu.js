@@ -36,6 +36,10 @@ body.dl #rvTR{margin-left:auto;display:flex;align-items:center;gap:2px;padding-r
 body.dl #rvTR .btn{height:24px;min-width:26px;padding:0 4px;background:none;border:0}
 body.dl #rvTR #bAcct .hide-m,body.dl #rvTR #bAcct span:not(.av){display:none}
 body.dl #rvTR #bAcct svg{width:18px;height:18px}
+body.rvWCO #wsMenu{display:flex!important;-webkit-app-region:drag;app-region:drag;height:26px;min-height:26px;padding-right:calc(100vw - env(titlebar-area-x,0px) - env(titlebar-area-width,100vw))!important}
+#rvLogo{display:none}body.rvWCO #rvLogo{display:block;width:18px;height:18px;margin:0 6px 0 4px;border-radius:3px}
+body.rvWCO #wsMenu .wm,body.rvWCO #rvTR,body.rvWCO #rvTR *{-webkit-app-region:no-drag;app-region:no-drag}
+body.rvWCO:not(.dl) #wsMenu{background:#000}body.rvWCO.light:not(.dl) #wsMenu{background:#fff}
 /* Properties toolbar takes the old document bar's place */
 body.dl #topbar{height:34px;min-height:34px;padding:0 8px;background:var(--rvBg);border-bottom:1px solid var(--rvLine);gap:0}
 body.dl #topbar>*:not(#rvPB){display:none!important}
@@ -73,9 +77,12 @@ body.dl #dlNav .btn{height:26px;min-width:28px;padding:0 4px;border:1px solid tr
 body.dl #dlNav .btn svg{width:17px;height:17px}
 body.dl #dlNav .btn.on{background:var(--rvOn);border-color:var(--rvOnLine)}
 body.dl #dlNav .sep{width:10px;background:none;border:0}
-body.dl #dlNav #pageIn{width:230px;height:22px;background:var(--rvBg);border:1px solid #8a8a8a;border-radius:0;font-size:12px}
+body.dl #dlNav #pageIn{width:230px!important;flex:0 1 230px;min-width:110px;height:22px;background:var(--rvBg);border:1px solid #8a8a8a;border-radius:0;font-size:12px}
 body.dl.light #dlNav #pageIn{background:#fff}
 body.dl #dlNav .rvHide{display:none!important}
+body.dl #dlNav{display:grid!important;grid-template-columns:minmax(max-content,1fr) minmax(0,auto) minmax(0,1fr);align-items:center;overflow:hidden}
+body.dl #dlNav .rvNP{display:flex;align-items:center;gap:1px;min-width:0}body.dl #dlNav .rvNC{overflow:hidden}body.dl #dlNav .rvNC>.btn{flex-shrink:0}
+body.dl #dlNav .rvNL{justify-self:start}body.dl #dlNav .rvNC{justify-self:center}body.dl #dlNav .rvNR{justify-self:end}
 body.dl #dlNav .dlInfo{font-size:12.5px;padding:0 6px}
 body.dl #dlNav #rvNavScale{font-size:12.5px;padding:0 8px 0 10px;white-space:nowrap}
 /* Status bar */
@@ -100,6 +107,7 @@ function build(){
  const st=document.createElement('style');st.id='rvCss';st.textContent=css;document.head.appendChild(st);
  // --- menu row: account (and notifications) at the right end
  const mb=$('#wsMenu');if(mb){const tr=document.createElement('div');tr.id='rvTR';mb.appendChild(tr);
+  const lg=document.createElement('img');lg.id='rvLogo';lg.src='img/icon-32.png';lg.alt='';mb.prepend(lg);
   const mv=()=>{['clBell','bAcct'].forEach(id=>{const e=$('#'+id);if(e&&e.parentElement!==tr)tr.appendChild(e)});const a=$('#bAcct');if(a){const t=a.textContent.trim()||'Account';if(a.title!==t)a.title=t}};mv();setInterval(mv,1500);
   new MutationObserver(mv).observe($('#topbar'),{childList:true})}
  // --- Properties toolbar
@@ -112,23 +120,27 @@ function build(){
   b.onclick=e=>{const v=window.PMViews;if(!v||!v.tabs)return;const r=b.getBoundingClientRect();
    window.PMWorkspace&&PMWorkspace.ctx(r.right-220,r.bottom,v.tabs.map(t=>({label:t.name,check:t.id===v.curTab,run:()=>v.switchTo&&v.switchTo(t.id)})))};
   new MutationObserver(()=>{if(b.parentElement===tb&&tb.lastElementChild!==b)tb.appendChild(b)}).observe(tb,{childList:true})}
- // --- Navigation bar in Revu's order
- const nav=$('#dlNav');const add=id=>{const e=$('#'+id);if(e){e.classList.remove('rvHide');nav.appendChild(e)}return e};
- const gap=()=>{const s=document.createElement('div');s.className='sep';nav.appendChild(s)};
- const keep=['dlSingle','dlSplitV','dlSplitH','dlCont','|','dlPan','dlSel','dlSelT','bZbox','|','dlFirst','bPrev','pageIn','bNext','dlLast','|','bBack','bFwd'];
+ // --- Navigation bar in Revu's order, in three parts: views on the left, tools and pages in the centre,
+ //     dimmer / page size / scale on the right
+ const nav=$('#dlNav');const part=c=>{const d=document.createElement('div');d.className='rvNP '+c;return d};
+ const NL=part('rvNL'),NC=part('rvNC'),NR=part('rvNR');
+ const LEFT=['dlSingle','dlSplitV','dlSplitH','dlCont'],CENTER=['dlPan','dlSel','dlSelT','bZbox','|','dlFirst','bPrev','pageIn','bNext','dlLast','|','bBack','bFwd'];
  const ml=$('#dlMLBtn');
  [...nav.children].forEach(e=>{if(e.classList.contains('sep')||e.classList.contains('sp'))e.remove();else e.classList.add('rvHide')});
- keep.forEach(k=>k==='|'?gap():add(k));
- const sp=document.createElement('div');sp.className='sp';sp.style.flex='1';nav.appendChild(sp);
- const dim=document.createElement('button');dim.className='btn';dim.id='rvDim';dim.title='Dimmer (Ctrl+F5)';dim.innerHTML=svg('dim',17);nav.appendChild(dim);
+ nav.append(NL,NC,NR);
+ const put=(box,id)=>{if(id==='|'){const s=document.createElement('div');s.className='sep';box.appendChild(s);return}const e=$('#'+id);if(e){e.classList.remove('rvHide');box.appendChild(e)}};
+ LEFT.forEach(k=>put(NL,k));CENTER.forEach(k=>put(NC,k));
+ const dim=document.createElement('button');dim.className='btn';dim.id='rvDim';dim.title='Dimmer (Ctrl+F5)';dim.innerHTML=svg('dim',17);NR.appendChild(dim);
  dim.onclick=()=>{const v=window.PMViews;const cur=+(window.__rvDim||0);window.__rvDim=cur?0:.45;v&&v.setDim&&v.setDim(window.__rvDim);dim.classList.toggle('on',!!window.__rvDim)};
- add('dlInfo');const ns=document.createElement('span');ns.id='rvNavScale';nav.appendChild(ns);
+ put(NR,'dlInfo');const ns=document.createElement('span');ns.id='rvNavScale';NR.appendChild(ns);
  // on a narrow window the page size and scale on the right go first (the Status bar shows them too)
- const fit=()=>{['dlInfo','rvNavScale','rvDim'].forEach(id=>{const e=$('#'+id);if(e)e.style.display=''});for(const id of ['dlInfo','rvNavScale','rvDim']){if(nav.scrollWidth<=nav.clientWidth+1)break;const e=$('#'+id);if(e)e.style.display='none'}};
+ const fit=()=>{const ids=['dlInfo','rvNavScale','rvDim','dlFirst','dlLast','bZbox','bFwd','bBack'];   // on a very narrow bar the first/last-page, zoom and back/forward buttons go too (keys and menus still do them)ids.forEach(id=>{const e=$('#'+id);if(e)e.style.display=''});
+  const room=()=>nav.clientWidth-(NL.scrollWidth+NC.scrollWidth+NR.scrollWidth)-8;
+  for(const id of ids){const ok=room()>=0&&(ids.indexOf(id)>2||NR.scrollWidth<=(nav.clientWidth-NC.scrollWidth)/2);if(ok)break;const e=$('#'+id);if(e)e.style.display='none'}};
  new ResizeObserver(fit).observe(nav);setInterval(fit,1500);
- // the Select Text button arrives a moment later from its own module: keep it next to Select
+ // buttons that arrive later from their own modules (Select Text) go to their place; anything else stays out of the bar
  new MutationObserver(()=>{const t=$('#dlSelT'),s=$('#dlSel');if(t&&s&&t.previousElementSibling!==s){t.classList.remove('rvHide');s.after(t)}
-  [...nav.children].forEach(e=>{if(!e.id&&!e.classList.contains('sep')&&!e.classList.contains('sp'))return;if(e.id&&!keep.includes(e.id)&&!['rvDim','dlInfo','rvNavScale','dlSelT'].includes(e.id)&&!e.classList.contains('sep')&&!e.classList.contains('sp'))e.classList.add('rvHide')})}).observe(nav,{childList:true});
+  [...nav.children].forEach(e=>{if(!e.classList.contains('rvNP'))e.classList.add('rvHide')})}).observe(nav,{childList:true});
  // --- Status bar
  const sb=$('#status');const ready=document.createElement('span');ready.id='rvReady';
  if(ml){ml.classList.remove('rvHide');sb.prepend(ml)}
@@ -179,28 +191,61 @@ function updStat(){if(!built)return;const p=S.pages[S.cur-1];
  const hint=($('#hint')||{}).textContent||'';const quiet=!S.sel.size&&(S.tool==='pan'||S.tool==='select')&&!S.drawing;
  const r=!S.pages.length?'Open PDF to markup.':quiet?'Ready':hint;const rd=$('#rvReady');if(rd&&rd.textContent!==r)rd.textContent=r}
 /* Properties toolbar: a compact copy of the main fields of the Properties panel; editing here edits there */
-const PF=[['stroke','Line'],['fill','Fill'],['fillOpacity','Fill opacity'],['width','Width'],['dash','Style'],['opacity','Opacity'],['|'],['font','Font'],['fontSize',''],['bold',''],['italic',''],['color','Text']];
+const PF=[['stroke','Line'],['fill','Fill'],['fillOpacity','Fill opacity'],['width','Width'],['dash','Style'],['s2:lineStyle','Line style'],['opacity','Opacity'],['headS','Start'],['headE','End'],['s2:leadHead','Leader'],['|'],
+ ['font','Font'],['fontSize','Size'],['bold',''],['italic',''],['color','Text'],['s2:align','Align']];
+const SEL=f=>f.startsWith('s2:')?`[data-s2="${f.slice(3)}"]`:`[data-f="${f}"]`;
+// the Properties panel redraws itself after some edits, so always talk to its current field
+const liveSrc=f=>document.querySelector('#props '+SEL(f));
 function syncPB(){const pb=$('#rvPB');if(!pb)return;if(pb.contains(document.activeElement))return;const box=$('#props');pb.innerHTML='';let last=null;
  for(const[f,lab]of PF){if(f==='|'){if(last&&last.className==='pf'){const v=document.createElement('span');v.className='vs';pb.appendChild(v);last=v}continue}
-  const src=box.querySelector(`[data-f="${f}"]`);if(!src)continue;
+  const src=box.querySelector(SEL(f));if(!src)continue;if(f==='dash'&&box.querySelector('[data-s2="lineStyle"]'))continue;   // one line-style list, like the panel
   const w=document.createElement('label');w.className='pf';if(lab)w.innerHTML=`<i>${lab}</i>`;let c;
   if(src.type==='checkbox'&&(f==='bold'||f==='italic')){c=document.createElement('button');c.type='button';c.className='tg'+(src.checked?' on':'');c.textContent=f==='bold'?'B':'I';if(f==='italic')c.style.fontStyle='italic';c.title=f==='bold'?'Bold':'Italic';
-   c.onclick=()=>{src.checked=!src.checked;src.dispatchEvent(new Event('input',{bubbles:true}));src.dispatchEvent(new Event('change',{bubbles:true}));c.classList.toggle('on',src.checked)}}
-  else if(src.type==='range'){c=document.createElement('input');c.type='number';c.min=0;c.max=100;c.step=5;c.value=src.value;c.dataset.pf=f;c.style.width='50px';
-   const pass=t=>()=>{src.value=Math.max(0,Math.min(100,+c.value||0));src.dispatchEvent(new Event(t,{bubbles:true}))};c.addEventListener('input',pass('input'));c.addEventListener('change',pass('change'));w.append(c);const pc=document.createElement('i');pc.textContent='%';w.append(pc);c=null}
-  else{c=src.cloneNode(true);c.removeAttribute('id');c.removeAttribute('data-f');c.dataset.pf=f;c.style.cssText='';
+   c.onclick=()=>{const sr=liveSrc(f)||src;sr.checked=!sr.checked;sr.dispatchEvent(new Event('input',{bubbles:true}));sr.dispatchEvent(new Event('change',{bubbles:true}));c.classList.toggle('on',sr.checked)}}
+  else if(src.type==='range'){const nb=document.createElement('input');nb.type='number';nb.min=0;nb.max=100;nb.step=5;nb.value=src.value;nb.dataset.pf=f;nb.style.width='50px';
+   nb.title={opacity:'Opacity',fillOpacity:'Fill opacity'}[f]||'';
+   const pass=t=>()=>{if(nb.value==='')return;const sr=liveSrc(f)||src;sr.value=Math.max(+sr.min||0,Math.min(100,+nb.value||0));sr.dispatchEvent(new Event(t,{bubbles:true}))};nb.addEventListener('input',pass('input'));nb.addEventListener('change',pass('change'));w.append(nb);const pc=document.createElement('i');pc.textContent='%';w.append(pc);c=null}
+  else{c=src.cloneNode(true);c.removeAttribute('id');c.removeAttribute('data-f');c.removeAttribute('data-s2');c.dataset.pf=f;c.style.cssText='';
    if(src.tagName==='SELECT')c.value=src.value;else if(src.type==='checkbox')c.checked=src.checked;else c.value=src.value;
-   const pass=t=>()=>{if(src.type==='checkbox')src.checked=c.checked;else src.value=c.value;src.dispatchEvent(new Event(t,{bubbles:true}))};
+   const pass=t=>()=>{const sr=liveSrc(f)||src;if(sr.type==='checkbox')sr.checked=c.checked;else sr.value=c.value;sr.dispatchEvent(new Event(t,{bubbles:true}))};
    c.addEventListener('input',pass('input'));c.addEventListener('change',pass('change'))}
   if(!c){pb.appendChild(w);last=w;continue}
-  c.title=c.title||({stroke:'Line color',fill:'Fill color',fillOpacity:'Fill on/off',width:'Line width',dash:'Line style',opacity:'Opacity',font:'Font',fontSize:'Font size',color:'Text color'}[f]||'');
+  c.title=c.title||({headS:'Line start',headE:'Line end','s2:align':'Text alignment','s2:lineStyle':'Line style','s2:leadHead':'Leader end',stroke:'Line color',fill:'Fill color',fillOpacity:'Fill on/off',width:'Line width',dash:'Line style',opacity:'Opacity',font:'Font',fontSize:'Font size',color:'Text color'}[f]||'');
   w.appendChild(c);pb.appendChild(w);last=w}
  if(last&&last.className==='vs')last.remove()}
-function valuesPB(){const box=$('#props');$$('#rvPB [data-pf]').forEach(c=>{const s=box.querySelector(`[data-f="${c.dataset.pf}"]`);if(!s||c===document.activeElement)return;if(s.type==='checkbox')c.checked=s.checked;else c.value=s.value})}
+function valuesPB(){const box=$('#props');$$('#rvPB [data-pf]').forEach(c=>{const s=box.querySelector(SEL(c.dataset.pf));if(!s||c===document.activeElement)return;if(s.type==='checkbox')c.checked=s.checked;else c.value=s.value})}
+/* Windows app: the menu row is the window's title bar (drag it to move the window, double-click to maximise);
+   the minimise / maximise / close buttons sit on its right end in the same colours */
+function titleBar(){const wco=navigator.windowControlsOverlay;const d=window.pmDesktop;if(!wco||!d||!d.setTitleBar)return;
+ const set=()=>{document.body.classList.toggle('rvWCO',!!wco.visible);const light=document.body.classList.contains('light');
+  const want=light?'#ffffff|#1e1f21':'#000000|#ffffff';if(set.last===want)return;set.last=want;const[c,sc]=want.split('|');d.setTitleBar({color:c,symbolColor:sc,height:26}).catch(()=>{})};
+ set();wco.addEventListener('geometrychange',set);new MutationObserver(set).observe(document.body,{attributes:true,attributeFilter:['class']})}
+H.ready.push(()=>setTimeout(titleBar,0));
 H.ready.push(()=>setTimeout(build,0));
 // the layout can be switched on later (Preferences or after the window grows)
 new MutationObserver(()=>{if(on()&&!built)setTimeout(build,0)}).observe(document.body,{attributes:true,attributeFilter:['class']});
-window.PM_EXTRA_CMDS_RV=()=>[{id:'rv:classic',menu:'View',label:'Classic layout',key:'',run:()=>window.PMDrafting&&PMDrafting.setOn(false)}];
+/* panels you don't use can be taken off the left strip (right-click an icon, or Window > Show / hide panels…), like
+   closing a panel in Revu; the choice follows your sign-in */
+const HP='pm:rv:hidePanels';window.PM_EXTRA_SYNC_KEYS_RV=[HP];
+const hidden=()=>{try{return LS.get(HP,[])||[]}catch(e){return[]}};
+function panelList(){return[...$$('#left .tabs [data-tab]')].map(b=>({id:b.dataset.tab,name:(b.title||b.dataset.dl||b.textContent||b.dataset.tab).replace(/\s*\(.*\)$/,'').trim()}))}
+function applyHidden(){const h=hidden();let st=$('#rvPanelHide');if(!st){st=document.createElement('style');st.id='rvPanelHide';document.head.appendChild(st)}
+ st.textContent=h.map(id=>`#left .tabs [data-tab="${CSS.escape(id)}"],.dlMenuItem[data-t="${CSS.escape(id)}"]{display:none!important}`).join('\n');
+ // if the open panel was just hidden, close the side panel
+ const cur=$('#left .tabs [data-tab].on');if(cur&&h.includes(cur.dataset.tab)){$('#left').classList.add('dlCollapsed');LS.set('pm:dl:col',true)}}
+function setHidden(h){LS.set(HP,[...new Set(h)]);applyHidden();hook('prefs')}
+function panelsDialog(){const h=hidden();const L=panelList();
+ modal('Show / hide panels',`<div style="columns:2;column-gap:24px;min-width:360px">${L.map(p=>`<label style="display:flex;gap:8px;align-items:center;padding:4px 0;break-inside:avoid"><input type="checkbox" data-pp="${esc(p.id)}" ${h.includes(p.id)?'':'checked'}>${esc(p.name)}</label>`).join('')}</div><div style="font-size:11px;color:var(--mut);margin-top:8px">Unticked panels leave the left strip. Their tools still work from the menus.</div>`,
+  [{label:'Show all',fn:md=>{md.querySelectorAll('[data-pp]').forEach(c=>c.checked=true);return false}},{label:'Cancel',cancel:1},{label:'OK',pri:1,fn:md=>setHidden([...md.querySelectorAll('[data-pp]')].filter(c=>!c.checked).map(c=>c.dataset.pp))}])}
+document.addEventListener('contextmenu',e=>{const b=e.target.closest&&e.target.closest('#left .tabs [data-tab]');if(!b||!on())return;e.preventDefault();e.stopPropagation();
+ const p=panelList().find(x=>x.id===b.dataset.tab)||{name:b.dataset.tab};
+ window.PMWorkspace&&PMWorkspace.ctx(e.clientX,e.clientY,[{label:`Hide ${p.name}`,run:()=>setHidden([...hidden(),b.dataset.tab])},{label:'Show / hide panels…',run:panelsDialog}])},true);
+// the panel title's drop-down list gets the same choice at its end
+new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes){if(n.nodeType!==1||!n.querySelector||!n.querySelector('.dlMenuItem')||n.querySelector('[data-rvpp]'))continue;
+ const it=document.createElement('div');it.className='dlMenuItem';it.dataset.rvpp='1';it.style.cssText='display:flex;gap:8px;align-items:center;padding:6px 10px;border-radius:4px;cursor:pointer;border-top:1px solid var(--line);margin-top:4px';it.textContent='Show / hide panels…';
+ it.onclick=ev=>{ev.stopPropagation();n.remove();panelsDialog()};n.appendChild(it)}}).observe(document.body,{childList:true});
+H.ready.push(()=>setTimeout(applyHidden,0));H.prefs&&H.prefs.push(applyHidden);
+window.PM_EXTRA_CMDS_RV=()=>[{id:'rv:panels',menu:'Window',label:'Show / hide panels…',key:'',run:panelsDialog},{id:'rv:classic',menu:'View',label:'Classic layout',key:'',run:()=>window.PMDrafting&&PMDrafting.setOn(false)}];
 // the Properties panel opens only when asked for (Alt+P, right-click > Properties), docked on the right like Revu
 function props(show){if(!on())return false;const b=document.body,want=show===true?true:!b.classList.contains('dlProps');b.classList.toggle('dlProps',want);$('#right').classList.remove('hide');LS.set('pm:dl:props',want);renderProps();setTimeout(()=>window.dispatchEvent(new Event('resize')),30);return true}
 window.PMRevu={rebuild:syncPB,status:updStat,props};

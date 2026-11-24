@@ -20,6 +20,7 @@ try { webVersion = ipcRenderer.sendSync('pm:web-version') || ''; } catch (_) { /
 
 contextBridge.exposeInMainWorld('pmDesktop', {
   isDesktop: true,
+  setTitleBar: (o) => ipcRenderer.invoke('pm:titlebar', o),
   version,
   webVersion,
   /** cb({state:'ready', version, notes}) when a downloaded update is ready to load. */
