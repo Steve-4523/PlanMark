@@ -242,7 +242,7 @@ async function propose(n){if(!S.pdf)return null;let rd=await readPage(n);let sca
    if(!ok){const c=[...ENG.map(n=>mk('e',n)),...ARCH.map(([,n])=>mk('a',n))].find(sc=>Math.abs(fpi/ftPerInOf(sc)-1)<=.04);if(c)res.alt={sc:c,agree:1}}}
   else if(!res.sc){const c=[...ENG.map(n=>mk('e',n)),...ARCH.map(([,n])=>mk('a',n))].find(sc=>Math.abs(fpi/ftPerInOf(sc)-1)<=.04);if(c){res.source='bar';res.sc=c;res.test={tested:1,agree:1,other:0,dims:[],bar:fpi}}}}
  else if(tb)res.read='ocr';
- last.set(S.fileKey+'|'+n,res);return res}
+ last.set(S.fileKey+'|'+n,res);clearTimeout(last.t);last.t=setTimeout(()=>{try{window.PMDrafting&&PMDrafting.decorateThumbs()}catch(e){}},50);return res}   // the thumbnail shows "Sheet says …"
 
 // ---- the Measure panel: when the page has no scale, show what the sheet says, with Use
 function measNote(){clearTimeout(measNote.t);measNote.t=setTimeout(()=>{const pane=document.getElementById('pane-measure');if(!pane||!S.pdf)return;let el=document.getElementById('sdMeas');

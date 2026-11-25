@@ -129,7 +129,7 @@ const UNITS={
  cm:{m:0.01,abbr:'cm',name:'Centimeters',area:'cm²',aream:1e-4},
  mm:{m:0.001,abbr:'mm',name:'Millimeters',area:'mm²',aream:1e-6},
 };
-const DEF_SCALE={perPt:PT_M,unit:'in',dec:2,prec:16,label:'1:1 (not calibrated)',none:true};
+const DEF_SCALE={perPt:PT_M,unit:'in',dec:2,prec:16,label:'Scale not set',none:true};
 const ARCH=[['1/32',1/32],['1/16',1/16],['3/32',3/32],['1/8',1/8],['3/16',3/16],['1/4',1/4],['3/8',3/8],['1/2',1/2],['3/4',3/4],['1',1],['1-1/2',1.5],['3',3]];
 const ENG=[10,20,30,40,50,60,100,200,500];
 const METRIC=[1,2,5,10,20,25,50,100,200,250,500,1000,2000];

@@ -217,7 +217,8 @@ function syncPB(){const pb=$('#rvPB');if(!pb)return;if(pb.contains(document.acti
   if(!c){pb.appendChild(w);last=w;continue}
   c.title=c.title||({headS:'Line start',headE:'Line end','s2:align':'Text alignment','s2:lineStyle':'Line style','s2:leadHead':'Leader end',stroke:'Line color',fill:'Fill color',fillOpacity:'Fill on/off',width:'Line width',dash:'Line style',opacity:'Opacity',font:'Font',fontSize:'Font size',color:'Text color'}[f]||'');
   w.appendChild(c);pb.appendChild(w);last=w}
- if(last&&last.className==='vs')last.remove()}
+ if(last&&last.className==='vs')last.remove();
+ if(!pb.children.length&&S.pages.length){const h=document.createElement('span');h.className='ezHint';h.textContent='Select a markup to change it here, or pick a tool to set its color, width and text before you draw';pb.appendChild(h)}}
 function valuesPB(){const box=$('#props');$$('#rvPB [data-pf]').forEach(c=>{const s=box.querySelector(SEL(c.dataset.pf));if(!s||c===document.activeElement)return;if(s.type==='checkbox')c.checked=s.checked;else c.value=s.value})}
 /* Windows app: the menu row is the window's title bar (drag it to move the window, double-click to maximise);
    the minimise / maximise / close buttons sit on its right end in the same colours */

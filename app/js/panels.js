@@ -67,13 +67,23 @@ function renderMeasure(){const pane=$('#pane-measure');if(!pane)return;if(!S.pag
 // ---------- File Access (recent files, stored on this device) ----------
 let rdb=null;function ridb(){if(!rdb)rdb=new Promise((res,rej)=>{try{const r=indexedDB.open('planmark-recent',1);r.onupgradeneeded=()=>r.result.createObjectStore('files',{keyPath:'key'});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}});return rdb}
 async function rtx(mode,fn){const d=await ridb();return new Promise((res,rej)=>{const t=d.transaction('files',mode),st=t.objectStore('files'),r=fn(st);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})}
-async function remember(){if(!S.bytes||S.bytes.length>80e6||/^Combined\.pdf$/.test(S.fileName))return;try{const key=S.fileName+':'+S.bytes.length;await rtx('readwrite',st=>st.put({key,name:S.fileName,size:S.bytes.length,bytes:S.bytes,at:Date.now(),pages:S.pages.length}));
- const all=(await rtx('readonly',st=>st.getAll())).sort((a,b)=>b.at-a.at);for(const x of all.slice(12))await rtx('readwrite',st=>st.delete(x.key));renderFiles()}catch(e){}}
-async function renderFiles(){const pane=$('#pane-files');if(!pane)return;let all=[];try{all=(await rtx('readonly',st=>st.getAll())).sort((a,b)=>b.at-a.at)}catch(e){pane.innerHTML='<div class="hint">Recent files need browser storage, which isn\'t available here.</div>';return}
+/* the list of recent files: names, sizes and dates live in a small index (pm:recentIdx), so showing the list never
+   loads the PDFs (a set can be 200 MB); the PDF is read only when you open it */
+const RIX='pm:recentIdx',meta=f=>({key:f.key,name:f.name,size:f.size,at:f.at,pages:f.pages||0});
+async function rebuildIdx(){const out=[];const d=await ridb();await new Promise((res,rej)=>{const c=d.transaction('files','readonly').objectStore('files').openCursor();c.onsuccess=()=>{const k=c.result;if(!k)return res();out.push(meta(k.value));k.continue()};c.onerror=()=>rej(c.error)});LS.set(RIX,out);return out}
+const PMRecent=window.PMRecent={
+ async list(){let ix=LS.get(RIX,null);if(!Array.isArray(ix))ix=await rebuildIdx();return ix.slice().sort((a,b)=>b.at-a.at)},
+ get:key=>rtx('readonly',st=>st.get(key)),
+ async put(rec){await rtx('readwrite',st=>st.put(rec));const ix=(await PMRecent.list()).filter(x=>x.key!==rec.key);ix.unshift(meta(rec));
+  for(const x of ix.slice(12))await rtx('readwrite',st=>st.delete(x.key));LS.set(RIX,ix.slice(0,12));dispatchEvent(new Event('pm:recent'))},
+ async del(key){await rtx('readwrite',st=>st.delete(key));LS.set(RIX,(await PMRecent.list()).filter(x=>x.key!==key));dispatchEvent(new Event('pm:recent'))},
+ async newest(name){const f=(await PMRecent.list()).find(x=>x.name===name);return f?PMRecent.get(f.key):null}};
+async function remember(){if(!S.bytes||S.bytes.length>250e6||/^Combined\.pdf$/.test(S.fileName))return;try{const key=S.fileName+':'+S.bytes.length;await PMRecent.put({key,name:S.fileName,size:S.bytes.length,bytes:S.bytes,at:Date.now(),pages:S.pages.length});renderFiles()}catch(e){}}
+async function renderFiles(){const pane=$('#pane-files');if(!pane)return;let all=[];try{all=await PMRecent.list()}catch(e){pane.innerHTML='<div class="hint">Recent files need browser storage, which isn\'t available here.</div>';return}
  pane.innerHTML=`<div class="hint" style="margin-bottom:8px">Recently opened PDFs, kept on this device for quick reopening (markups come back too).</div>`+(all.map(f=>`<div class="res" data-rk="${esc(f.key)}" style="display:flex;justify-content:space-between;gap:6px"><span><b style="font-weight:600">${esc(f.name)}</b><br><small style="color:var(--mut)">${f.pages||'?'} pages · ${(f.size/1048576).toFixed(1)} MB · ${new Date(f.at).toLocaleString()}</small></span><span data-rx="${esc(f.key)}" title="Remove" style="opacity:.6">✕</span></div>`).join('')||'<div class="hint">Nothing yet.</div>');
- pane.onclick=async e=>{const x=e.target.closest('[data-rx]');if(x){e.stopPropagation();await rtx('readwrite',st=>st.delete(x.dataset.rx));renderFiles();return}const r=e.target.closest('[data-rk]');if(!r)return;const f=await rtx('readonly',st=>st.get(r.dataset.rk));if(f)openBytes(new Uint8Array(f.bytes),f.name)}}
+ pane.onclick=async e=>{const x=e.target.closest('[data-rx]');if(x){e.stopPropagation();await PMRecent.del(x.dataset.rx);renderFiles();return}const r=e.target.closest('[data-rk]');if(!r)return;const f=await PMRecent.get(r.dataset.rk);if(f)openBytes(new Uint8Array(f.bytes),f.name)}}
 // ---------- wiring ----------
-H.open.push(()=>{renderBookmarks();renderMeasure();setTimeout(remember,1500);apply()});
+H.open.push(()=>{renderBookmarks();renderMeasure();setTimeout(async()=>{try{if(window.PMScaleDetect)await PMScaleDetect.idle()}catch(e){}remember()},1500);apply()});
 H.change.push(()=>{clearTimeout(window.__msT);window.__msT=setTimeout(renderMeasure,300)});
 const _ucur=updateScaleBtn;updateScaleBtn=function(){_ucur.apply(this,arguments);clearTimeout(window.__msT2);window.__msT2=setTimeout(renderMeasure,150)};
 H.ready.push(()=>{const p=$('#pane-pages');

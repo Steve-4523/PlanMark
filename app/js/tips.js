@@ -66,7 +66,8 @@ function show(n){hide();if(typeof n==='number')i=n;const host=document.getElemen
   if(k==='x')hide();else if(k==='next'){i=(i+1)%TIPS.length;LS.set(NK,(i+1)%TIPS.length);render(t);arm()}
   else if(k==='on')setOn(a.checked)}}
 // at start: after the app is up, and after any "What's new" note has gone
-function atStart(){if(!tipsOn())return;i=+LS.get(NK,0)||0;let n=0;const go=()=>{if(document.getElementById('wsBanner')||document.querySelector('#modalBg.on')){if(++n<90)setTimeout(go,1000);return}show()};setTimeout(go,1500)}
+function atStart(){if(!tipsOn()||window.PM_FIRST_RUN)return;   // a brand-new person gets the start screen first, tips from the next time
+ i=+LS.get(NK,0)||0;let n=0;const go=()=>{if(document.getElementById('wsBanner')||document.querySelector('#modalBg.on')){if(++n<90)setTimeout(go,1000);return}show()};setTimeout(go,1500)}
 H.ready.push(atStart);
 window.PM_EXTRA_SYNC_KEYS_TIPS=[LSK,NK];
 window.PM_EXTRA_CMDS_TIPS=()=>[{id:'tips:show',menu:'Help',label:'Tip of the day',key:'',run:()=>show()}];

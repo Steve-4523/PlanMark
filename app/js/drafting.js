@@ -194,7 +194,8 @@ function decorateThumbs(){if(!document.body.classList.contains('dl'))return;
   for(const node of [...t.childNodes])if(node.nodeType===3&&/Page\s*\d+/.test(node.textContent)){const s=document.createElement('span');s.className='dlNum';s.textContent=String(n);node.replaceWith(s)}
   let lab=t.querySelector('.dlNum');const pl=(window.PMLabels&&PMLabels.has(n))?PMLabels.labelOf(n):((S.pages[n-1]&&S.pages[n-1].label)||'');if(lab){const want=pl&&pl!==String(n)?pl:String(n);if(lab.textContent!==want)lab.textContent=want}
   let sc=t.querySelector('.dlSc');if(!sc){sc=document.createElement('span');sc.className='dlSc';(lab||t).after?lab?lab.after(sc):t.appendChild(sc):t.appendChild(sc)}
-  const tx=scaleText(n);if(sc.textContent!==tx)sc.textContent=tx;
+  let tx=scaleText(n),says=false;if(tx==='Scale Not Set'){try{const p=window.PMScaleDetect&&PMScaleDetect.lastFor(n);if(p&&p.sc){tx='Sheet says '+p.sc.label;says=true}}catch(e){}}
+  if(sc.textContent!==tx)sc.textContent=tx;sc.classList.toggle('ezSays',says);sc.title=says?'Read from the sheet, not set yet — use the note at the bottom, or right-click the scale in the status bar':'';
   t.classList.toggle('cur',n===S.cur)})}
 function navState(){if(!document.body.classList.contains('dl'))return;
  const n=S.pages.length,c=S.cur||0,pi=$('#pageIn');

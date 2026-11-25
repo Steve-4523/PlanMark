@@ -58,7 +58,7 @@ async function zoomRect(n,r){const vr=viewer.getBoundingClientRect(),w=Math.max(
 // recent files kept on this device (same store as File Access)
 let rdb=null;const ridb=()=>rdb||(rdb=new Promise((res,rej)=>{try{const r=indexedDB.open('planmark-recent',1);r.onupgradeneeded=()=>r.result.createObjectStore('files',{keyPath:'key'});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}}));
 async function rtx(mode,fn){const d=await ridb();return new Promise((res,rej)=>{const t=d.transaction('files',mode),st=t.objectStore('files'),r=fn(st);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})}
-async function recentFiles(){try{return((await rtx('readonly',st=>st.getAll()))||[]).sort((a,b)=>b.at-a.at)}catch(e){return[]}}
+async function recentFiles(){try{if(window.PMRecent)return await PMRecent.list();return((await rtx('readonly',st=>st.getAll()))||[]).sort((a,b)=>b.at-a.at)}catch(e){return[]}}
 function pickPdfFile(){return new Promise(res=>{const i=document.createElement('input');i.type='file';i.accept='application/pdf,.pdf';i.onchange=()=>res(i.files[0]||null);i.click()})}
 async function rememberFile(name,bytes){try{await rtx('readwrite',st=>st.put({key:name+':'+bytes.length,name,size:bytes.length,bytes,at:Date.now(),pages:0}))}catch(e){}}
 async function follow(l){if(!l)return;
@@ -67,8 +67,8 @@ async function follow(l){if(!l)return;
  if(l.type==='file'){const tabs=Vw().tabs||[];const t=tabs.find(t=>(t.name||'')===l.name);
   const go=()=>{if(l.page&&l.page<=S.pages.length){gotoPage(l.page,true);if(l.rect)setTimeout(()=>zoomRect(l.page,l.rect),150)}};
   if(S.fileName===l.name){go();return}if(t){Vw().switchTo(t.id);setTimeout(go,120);return}
-  const f=(await recentFiles()).find(x=>x.name===l.name);
-  if(f){await openBytes(new Uint8Array(f.bytes),f.name);setTimeout(go,250);return}
+  let f=(await recentFiles()).find(x=>x.name===l.name);if(f&&!f.bytes&&window.PMRecent)f=await PMRecent.get(f.key);
+  if(f&&f.bytes){await openBytes(new Uint8Array(f.bytes),f.name);setTimeout(go,250);return}
   toast(l.name+' is not on this device yet — choose it once');const pf=await pickPdfFile();if(!pf)return;const b=new Uint8Array(await pf.arrayBuffer());await rememberFile(l.name,b);await openBytes(b,pf.name);setTimeout(go,250)}}
 L3.follow=follow;
 // Edit Action dialog — works for every markup type
