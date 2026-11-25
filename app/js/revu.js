@@ -155,7 +155,7 @@ function build(){
  tgl('rvSnapM','Snap To Markup','snapm',()=>SN().markup,snap('markup'));
  tgl('rvReuse','Reuse: keep the tool after each markup','reuse',()=>!!S.lock,()=>{S.lock=!S.lock;updateRibbon();LS.set('pm:qa4:reuse',!!S.lock)});
  tgl('rvSync','Synchronize views','sync',()=>{const v=window.PMViews;return!!(v&&v.P2&&v.P2.on&&v.P2.sync)},()=>{const v=window.PMViews;if(!v||!v.P2||!v.P2.on)return toast('Split the view first');v.setSync()});
- const sc=document.createElement('button');sc.id='rvScale';sc.title='Scale (calibrate or pick a scale)';sr.appendChild(sc);sc.onclick=()=>{const b=$('#scaleBtn');b&&b.click()};
+ const sc=document.createElement('button');sc.id='rvScale';sc.title='Scale (calibrate or pick a scale)';sr.appendChild(sc);sc.onclick=()=>scaleMenu(sc);
  const sz=document.createElement('span');sz.className='tx';sz.id='rvSize';sr.appendChild(sz);
  const xy=document.createElement('span');xy.className='tx';xy.id='rvXY';xy.style.minWidth='92px';sr.appendChild(xy);
  // cursor position in page inches from the sheet's lower-left corner, like Revu
@@ -179,6 +179,11 @@ function orderStrip(){const rb=$('#ribbon');if(!rb||rb.dataset.rv)return;const b
  // the old groups now only hold Select / Pan / Select Text, kept (hidden) so their shortcuts and states still work
  old.forEach(g=>{g.classList.add('rvNavGrp');const pv=g.previousElementSibling;if(pv&&pv.classList.contains('sep'))pv.remove()});
  try{window.PMWorkspace&&PMWorkspace.applyTB&&PMWorkspace.applyTB()}catch(e){}}
+// the scale button in the status bar: a short menu, like Bluebeam's
+function scaleMenu(btn){const W=window.PMWorkspace;if(!S.pdf||!W||!W.ctx){const b=$('#scaleBtn');b&&b.click();return}const r=btn.getBoundingClientRect(),SD=window.PMScaleDetect,n=S.cur,cur=scaleFor(n),p=SD&&SD.lastFor&&SD.lastFor(n);
+ const items=[];if(p&&p.sc&&(cur.none||p.sc.label!==cur.label)){const t=p.test||{},tot=t.agree+(t.other||0);items.push({label:`Use ${p.sc.label} (${p.source==='sheet'?'printed on the sheet':'from the dimensions'}${t.tested?(SD.passes(p)?' ✓':' ⚠'):''})`,run:()=>{const v=SD.applyProposal(p);if(v===false)return toast('This page has a protected scale');SD.afterApply();toast('Scale set: '+p.sc.label+(v?` · ${v} detail viewport${v>1?'s':''} added`:''))}},'-')}
+ items.push({label:'Set scale…',run:()=>scaleDialog()},{label:'Calibrate',run:()=>{setTool('calibrate');toast('Draw a line over a known dimension')}},'-',{label:'Check scale against the dimensions',dis:!SD,run:()=>SD.checkNow()},{label:'Set every page from its sheet…',dis:!SD,run:()=>SD.allPages()});
+ W.ctx(r.left,r.top-8-items.length*28,items)}
 function scaleTxt(n){try{const s=scaleFor(n);return s.none?'Scale Not Set':(s.label||'Scaled')}catch(e){return''}}
 function updStat(){if(!built)return;const p=S.pages[S.cur-1];
  const sz=p?`${(p.w/72).toFixed(2)} x ${(p.h/72).toFixed(2)} in`:'',sct=p?scaleTxt(S.cur):'';

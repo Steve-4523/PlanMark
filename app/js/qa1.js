@@ -103,11 +103,7 @@ function thumbW(){const s=document.getElementById('wsThS');return s?+s.value:130
 function applyThumbSize(){const pane=document.getElementById('pane-pages');if(!pane)return;const cw=pane.clientWidth;pane.style.setProperty('--wsTh',(cw?Math.min(thumbW(),Math.max(60,cw-40)):thumbW())+'px')}
 // a panel that starts closed has no width yet: size the thumbnails again once it opens or is resized
 try{const pn=document.getElementById('pane-pages');if(pn)new ResizeObserver(()=>applyThumbSize()).observe(pn)}catch(e){}
-let thTok=0;async function sharpenThumbs(){const tok=++thTok,pane=document.getElementById('pane-pages');if(!pane||!S.pdf)return;const dpr=Math.min(devicePixelRatio||1,2);
- for(const t of pane.querySelectorAll('.thumb')){if(tok!==thTok)return;const c=t.querySelector('canvas'),p=S.pages[+t.dataset.p-1];if(!c||!p)continue;
-  const need=Math.round(c.getBoundingClientRect().width*dpr);if(need<=c.width*1.08)continue;
-  try{const pg=await S.pdf.getPage(p.num);if(tok!==thTok)return;const sc=need/p.w,vp=pg.getViewport({scale:sc});const o=document.createElement('canvas');o.width=Math.round(p.w*sc);o.height=Math.round(p.h*sc);
-   await pg.render({canvasContext:o.getContext('2d'),viewport:vp}).promise;if(tok!==thTok)return;c.width=o.width;c.height=o.height;c.getContext('2d').drawImage(o,0,0)}catch(e){}}}
+async function sharpenThumbs(){try{if(S.pdf)drawThumbs(thumbTok)}catch(e){}}   // core draws them at the shown size
 let thT=0;document.addEventListener('input',e=>{if(e.target&&e.target.id==='wsThS'){applyThumbSize();clearTimeout(thT);thT=setTimeout(sharpenThumbs,300)}});
 setInterval(()=>{if(document.getElementById('wsThS'))applyThumbSize()},1000);
 

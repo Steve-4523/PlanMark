@@ -353,12 +353,16 @@ let thumbTok=0;
 // Thumbnails are drawn at the size they are actually shown on screen times the screen's sharpness (so they stay crisp
 // on high-resolution screens and when the panel is widened), and drawn again whenever the panel gets wider.
 function thumbWant(c){const w=c.getBoundingClientRect().width;return w>0?w*Math.min(window.devicePixelRatio||1,3):0}
-async function drawThumb(p,c,tok){const want=thumbWant(c);if(!want)return;const sc=Math.min(want,1600)/p.w;
- if(c._sc&&Math.abs(c._sc-sc)/sc<.12)return;c._sc=sc;
- const pg=await S.pdf.getPage(p.num);if(tok!==thumbTok)return;const vp=pg.getViewport({scale:sc});
- const t=document.createElement('canvas');t.width=Math.max(1,Math.round(vp.width));t.height=Math.max(1,Math.round(vp.height));
- await pg.render({canvasContext:t.getContext('2d'),viewport:vp}).promise;if(tok!==thumbTok)return;
- c.width=t.width;c.height=t.height;c.getContext('2d').drawImage(t,0,0)}
+// Thin drawing lines come out pale grey at thumbnail size, so the thumbnail is drawn at twice the size, shrunk in
+// one smooth step, and then the faint greys are darkened: lines read as crisp as they do in Bluebeam.
+function thumbInk(ctx,w,h){try{const im=ctx.getImageData(0,0,w,h),d=im.data,lut=new Uint8ClampedArray(256);for(let i=0;i<256;i++)lut[i]=255*Math.pow(i/255,2.1);
+ for(let i=0;i<d.length;i+=4){d[i]=lut[d[i]];d[i+1]=lut[d[i+1]];d[i+2]=lut[d[i+2]]}ctx.putImageData(im,0,0)}catch(e){}}
+async function drawThumb(p,c,tok){const want=thumbWant(c);if(!want)return;const W=Math.max(1,Math.round(Math.min(want,1600))),sc=W/p.w;
+ if(c._sc&&Math.abs(c._sc-sc)/sc<.06)return;c._sc=sc;
+ const pg=await S.pdf.getPage(p.num);if(tok!==thumbTok)return;const k=sc<.6?2:1,vp=pg.getViewport({scale:sc*k});
+ const t=document.createElement('canvas');t.width=Math.max(1,Math.round(vp.width));t.height=Math.max(1,Math.round(vp.height));const tx=t.getContext('2d');tx.fillStyle='#fff';tx.fillRect(0,0,t.width,t.height);
+ await pg.render({canvasContext:tx,viewport:vp}).promise;if(tok!==thumbTok)return;
+ const H=Math.max(1,Math.round(t.height/k));c.width=W;c.height=H;const cx=c.getContext('2d');cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';cx.drawImage(t,0,0,W,H);if(sc<.6)thumbInk(cx,W,H)}
 async function drawThumbs(tok){const pane=$('#pane-pages');
  for(const p of S.pages){if(tok!==thumbTok)return;const c=pane.querySelector(`.thumb[data-p="${p.num}"] canvas`);if(!c)continue;try{await drawThumb(p,c,tok)}catch(e){c._sc=0}}}
 let thumbRT=0;const thumbRO=new ResizeObserver(()=>{clearTimeout(thumbRT);thumbRT=setTimeout(()=>{if(S.pdf)drawThumbs(thumbTok)},250)});
@@ -498,7 +502,7 @@ function finishDrawing(){const d=S.drawing;if(!d)return;S.drawing=null;hideFinis
  if(t.kind==='free'){if(pts.length<2){redrawPage(d.page);return}pts=simplify(pts,.35/S.zoom)}
  if(d.type==='image'&&dist(pts[0],pts[1])*S.zoom<4){const a=pts[0],w=200;pts=[a,[a[0]+w,a[1]+w*(S.imageAR||1)]]}
  if(pts.length<need||(t.kind==='drag'&&dist(pts[0],pts[1])*S.zoom<2)){redrawPage(d.page);return}
- if(d.type==='calibrate'){redrawPage(d.page);calibrateDialog(d.page,dist(pts[0],pts[1]));return}
+ if(d.type==='calibrate'){redrawPage(d.page);calibrateDialog(d.page,dist(pts[0],pts[1]),pts);return}
  if(T[d.type].textm){redrawPage(d.page);textMarkup(d,normBox(pts[0],pts[1]));return}
  if(d.type==='callout'){const tip=pts[0],b=pts[1],w=150,h=40;const x0=b[0]>=tip[0]?b[0]:b[0]-w;pts=[tip,[x0,b[1]-h/2],[x0+w,b[1]+h/2]]}
  const m=newMarkup(d.type,d.page,pts,d.style);if(d.type==='image'){if(!S.imageSrc){toast('Choose an image first');return}m.img=S.imageSrc}pushUndo();S.markups.push(m);afterCreate(m)}
@@ -692,33 +696,65 @@ function stampPicker(){if(!S.pages.length)return;modal('Choose a stamp',`<div cl
  [{label:'Cancel',cancel:1},{label:'Use custom',pri:1,fn:md=>{const v=md.querySelector('#stc').value.trim().toUpperCase();if(!v)return false;S.stampText=v;setTool('stamp')}}]);
  $('#modal .stamps').onclick=e=>{const b=e.target.closest('[data-st]');if(!b)return;S.stampText=b.dataset.st;closeModal();setTool('stamp')}}
 function unitOpts(sel){return Object.entries(UNITS).map(([k,u])=>`<option value="${k}" ${k===sel?'selected':''}>${u.name}</option>`).join('')}
-function precFields(sc){return`<div class="row fld"><div><label style="font-size:11px;color:var(--mut)">Fraction precision (ft-in)</label><select class="ti" id="cPrec">${[1,2,4,8,16,32].map(d=>`<option value="${d}" ${d===(sc.prec||8)?'selected':''}>${d===1?'1"':'1/'+d+'"'}</option>`).join('')}</select></div>
+function precFields(sc,page){page=page||S.cur;return`<div class="row fld"><div><label style="font-size:11px;color:var(--mut)">Fraction precision (ft-in)</label><select class="ti" id="cPrec">${[1,2,4,8,16,32].map(d=>`<option value="${d}" ${d===(sc.prec||16)?'selected':''}>${d===1?'1"':'1/'+d+'"'}</option>`).join('')}</select></div>
  <div><label style="font-size:11px;color:var(--mut)">Decimals (others)</label><select class="ti" id="cDec">${[0,1,2,3,4].map(d=>`<option ${d===(sc.dec??2)?'selected':''}>${d}</option>`).join('')}</select></div></div>
- <div class="fld"><label>Apply to</label><label class="chk"><input type="radio" name="cAp" value="page" checked> This page (${S.cur})</label><label class="chk"><input type="radio" name="cAp" value="all"> All pages</label></div>`}
+ <div class="fld"><label>Apply to</label><label class="chk"><input type="radio" name="cAp" value="page" checked> This page (${page})</label><label class="chk"><input type="radio" name="cAp" value="all"> All pages</label>${S.pages.length>2?`<label class="chk" style="align-items:center"><input type="radio" name="cAp" value="range"> Pages <input class="ti" id="cApR" placeholder="e.g. 1-4, 7" style="width:120px;height:24px;margin-left:6px" onfocus="this.previousElementSibling.checked=true"></label>`:''}</div>`}
+function pageRange(t){const out=new Set();for(const part of String(t||'').split(/[,;\s]+/)){const m=/^(\d+)(?:-(\d+))?$/.exec(part.trim());if(!m)continue;let a=+m[1],b=m[2]?+m[2]:a;if(a>b)[a,b]=[b,a];for(let k=Math.max(1,a);k<=Math.min(S.pages.length,b);k++)out.add(k)}return[...out]}
 function applyScale(sc,md,page){const ap=md.querySelector('input[name=cAp]:checked').value;sc.prec=+md.querySelector('#cPrec').value;sc.dec=+md.querySelector('#cDec').value;
- if(ap==='all'){S.scales={all:sc}}else S.scales[page]=sc;saveScales();commit();updateScaleBtn();renderProps();toast('Scale set: '+sc.label)}
-function calibrateDialog(page,ptLen){const cur=scaleFor(page);const paperIn=ptLen/72;
- modal('Calibrate',`<div class="hint" style="margin-bottom:10px">Line drawn: <b style="color:var(--text)">${paperIn.toFixed(3)}"</b> on paper. Enter the real-world length it represents.</div>
+ if(ap==='all'){S.scales={all:sc}}
+ else if(ap==='range'){const L=pageRange((md.querySelector('#cApR')||{}).value);if(!L.length){toast('Type the pages, e.g. 1-4, 7');return false}const lk=L.filter(n=>S.scales[n]&&S.scales[n].locked);
+  if(S.scales.all){const a=S.scales.all;delete S.scales.all;for(const q of S.pages)if(!S.scales[q.num])S.scales[q.num]=Object.assign({},a)}
+  for(const n of L)if(!lk.includes(n))S.scales[n]=Object.assign({},sc);if(lk.length)toast('Protected scale kept on page '+lk.join(', '))}
+ else{if(S.scales.all&&!S.scales[page]){const a=S.scales.all;delete S.scales.all;for(const q of S.pages)if(q.num!==page&&!S.scales[q.num])S.scales[q.num]=Object.assign({},a)}S.scales[page]=sc}
+ saveScales();commit();updateScaleBtn();renderProps();toast('Scale set: '+sc.label+(ap==='all'?' (all pages)':ap==='range'?' (pages '+(md.querySelector('#cApR')||{}).value+')':''))}
+// the standard scale closest to a ratio (real length / paper length), if it is within 2%
+function nearStd(perPt,unit){const metric=unit&&UNITS[unit]&&['m','cm','mm'].includes(unit),r=perPt/PT_M;let best=null;
+ const c=(label,ratio,u)=>{const e=Math.abs(r/ratio-1);if(e<=.02&&(!best||e<best.e))best={label,perPt:ratio*PT_M,e,u}};
+ if(!metric){for(const[l,v]of ARCH)c(`${l}" = 1'-0"`,12/v);for(const n of ENG)c(`1" = ${n}'`,12*n)}for(const n of METRIC)c('1:'+n,n);return best}
+function calibrateDialog(page,ptLen,pts){const cur=scaleFor(page);const paperIn=ptLen/72;
+ modal('Calibrate',`<div class="hint" style="margin-bottom:10px">Line drawn: <b style="color:var(--text)">${paperIn.toFixed(3)}"</b> on paper. Enter the real-world length it represents.<span id="cFrom" style="display:block;margin-top:4px"></span></div>
  <div class="fld"><label>Unit</label><select class="ti" id="cU">${unitOpts(cur.none?'ftin':cur.unit)}</select></div>
  <div class="row fld" id="cFI"><div><label style="font-size:11px;color:var(--mut)">Feet</label><input class="ti" type="number" id="cFt" value="10" step="any"></div><div><label style="font-size:11px;color:var(--mut)">Inches</label><input class="ti" type="number" id="cIn" value="0" step="any"></div></div>
- <div class="fld" id="cV" style="display:none"><label>Length</label><input class="ti" type="number" id="cVal" value="10" step="any"></div>${precFields(cur)}`,
- [{label:'Cancel',cancel:1},{label:'Calibrate',pri:1,fn:md=>{const u=md.querySelector('#cU').value;let meters;
-  if(u==='ftin')meters=((+md.querySelector('#cFt').value||0)*12+(+md.querySelector('#cIn').value||0))*0.0254;else meters=(+md.querySelector('#cVal').value||0)*UNITS[u].m;
+ <div class="fld" id="cV" style="display:none"><label>Length</label><input class="ti" type="number" id="cVal" value="10" step="any"></div>
+ <label class="chk fld" id="cStdL" style="display:none"><input type="checkbox" id="cStd" checked> <span id="cStdT"></span></label>${precFields(cur,page)}`,
+ [{label:'Cancel',cancel:1},{label:'Calibrate',pri:1,fn:md=>{const u=md.querySelector('#cU').value;const meters=realLen(md);
   if(!(meters>0)){toast('Enter a length greater than zero');return false}
-  const perPt=meters/ptLen,ratio=perPt/PT_M;applyScale({perPt,unit:u,label:`Custom 1:${ratio>=10?Math.round(ratio):ratio.toFixed(2)}`},md,page);
+  let perPt=meters/ptLen,ratio=perPt/PT_M,label=`Custom 1:${ratio>=10?Math.round(ratio):ratio.toFixed(2)}`;const st=nearStd(perPt,u);
+  if(st&&md.querySelector('#cStd').checked){perPt=st.perPt;label=st.label}
+  if(applyScale({perPt,unit:u,label},md,page)===false)return false;
   // straight to the Dimension tool so the new scale can be checked against another known length
   setTimeout(()=>{try{setTool('dimension');toast('Scale set. Draw a dimension over another known length to check it.')}catch(e){}},0)}}]);
- const sw=()=>{const ftin=$('#cU').value==='ftin';$('#cFI').style.display=ftin?'flex':'none';$('#cV').style.display=ftin?'none':'block'};$('#cU').onchange=sw;sw()}
-function scaleDialog(){if(!S.pages.length)return;const cur=scaleFor(S.cur);
- const opts=`<optgroup label="Architectural">${ARCH.map(([l,v])=>`<option value="a:${v}">${l}" = 1'-0"</option>`).join('')}</optgroup><optgroup label="Engineering">${ENG.map(n=>`<option value="e:${n}">1" = ${n}'</option>`).join('')}</optgroup><optgroup label="Metric">${METRIC.map(n=>`<option value="m:${n}">1:${n}</option>`).join('')}</optgroup><optgroup label="Other"><option value="f:1">Full size 1:1</option></optgroup>`;
- modal('Scale',`<div class="hint" style="margin-bottom:10px">Current: <b style="color:var(--text)">${esc(cur.label)}</b> on page ${S.cur}</div>
+ const md=$('#modal');function realLen(){const u=$('#cU').value;return u==='ftin'?((+$('#cFt').value||0)*12+(+$('#cIn').value||0))*0.0254:(+$('#cVal').value||0)*UNITS[u].m}
+ const upd=()=>{const m=realLen(),st=m>0&&nearStd(m/ptLen,$('#cU').value);$('#cStdL').style.display=st?'flex':'none';if(st&&upd.last!==st.label){$('#cStd').checked=st.e<=.01;upd.last=st.label}   // ticked for you only when it is within 1%
+if(st)$('#cStdT').textContent=st.e<.0005?`Matches ${st.label}`:`Round to ${st.label} (a standard scale, ${(st.e*100).toFixed(1)}% off what you drew)`};
+ const sw=()=>{const ftin=$('#cU').value==='ftin';$('#cFI').style.display=ftin?'flex':'none';$('#cV').style.display=ftin?'none':'block';upd()};$('#cU').onchange=sw;sw();
+ ['cFt','cIn','cVal'].forEach(id=>$('#'+id).addEventListener('input',upd));setTimeout(()=>{const f=$('#cFt');if(f&&f.offsetParent){f.focus();f.select()}},30);
+ // fill in the length from the written dimension the line was drawn over
+ if(pts&&pts.length>1&&window.PMScaleDetect&&PMScaleDetect.dimUnder)PMScaleDetect.dimUnder(page,pts[0],pts[pts.length-1]).then(d=>{if(!d||!$('#cFrom'))return;const inch=d.inches;
+  if(d.kind==='mm'){$('#cU').value='mm';sw();$('#cVal').value=Math.round(inch*25.4)}else{if($('#cU').value!=='ftin'){$('#cU').value='ftin';sw()}const ft=Math.floor(inch/12+1e-9);$('#cFt').value=ft;$('#cIn').value=+(inch-ft*12).toFixed(4)}
+  $('#cFrom').innerHTML=`Filled in from the written dimension <b style="color:var(--text)">${esc(d.text)}</b> under your line.`;upd()})}
+function scaleDialog(){if(!S.pages.length)return;const cur=scaleFor(S.cur);const prop=window.PMScaleDetect&&PMScaleDetect.lastFor&&PMScaleDetect.lastFor(S.cur);
+ const opts=`<optgroup label="Architectural">${ARCH.map(([l,v])=>`<option value="a:${v}">${l}" = 1'-0"</option>`).join('')}</optgroup><optgroup label="Engineering">${ENG.map(n=>`<option value="e:${n}">1" = ${n}'</option>`).join('')}</optgroup><optgroup label="Metric">${METRIC.map(n=>`<option value="m:${n}">1:${n}</option>`).join('')}</optgroup><optgroup label="Other"><option value="f:1">Full size 1:1</option><option value="c:0">Custom…</option></optgroup>`;
+ const pt=prop&&prop.sc&&(prop.sc.label!==cur.label||cur.none)?`<div class="hint" style="margin:-4px 0 10px">The sheet says <b style="color:var(--text)">${esc(prop.sc.label)}</b>${prop.test&&prop.test.tested?` (${prop.test.agree+(prop.test.other||0)} of ${prop.test.tested} dimensions match)`:''} — <a href="#" id="sUse" style="color:#7dd3fc">use it</a></div>`:'';
+ modal('Scale',`<div class="hint" style="margin-bottom:10px">Current: <b style="color:var(--text)">${esc(cur.none?'not set':cur.label)}</b> on page ${S.cur}</div>${pt}
  <div class="fld"><label>Preset scale</label><select class="ti" id="sP">${opts}</select></div>
+ <div class="fld"><label>Scale</label><div class="row" style="gap:6px;align-items:center"><input class="ti" type="number" id="sPa" step="any" style="width:80px"><select class="ti" id="sPu" style="width:70px"><option value="in">in</option><option value="mm">mm</option></select><span>=</span><input class="ti" type="number" id="sRe" step="any" style="width:90px"><select class="ti" id="sRu" style="width:70px"><option value="ft">ft</option><option value="in">in</option><option value="m">m</option><option value="mm">mm</option></select></div></div>
  <div class="fld"><label>Display unit</label><select class="ti" id="sU">${unitOpts(cur.none?'ftin':cur.unit)}</select></div>${precFields(cur)}
  <div class="hint">Or <a href="#" id="sCal" style="color:#7dd3fc">calibrate by drawing</a> over a known dimension.</div>`,
- [{label:'Cancel',cancel:1},{label:'Apply',pri:1,fn:md=>{const[k,v]=md.querySelector('#sP').value.split(':'),n=+v;let perPt,label;
-  if(k==='a'){perPt=12/n*PT_M;label=md.querySelector('#sP').selectedOptions[0].textContent}else if(k==='e'){perPt=12*n*PT_M;label=`1" = ${n}'`}else if(k==='m'){perPt=n*PT_M;label='1:'+n}else{perPt=PT_M;label='1:1'}
-  applyScale({perPt,unit:md.querySelector('#sU').value,label},md,S.cur)}}]);
- $('#sP').value='a:0.25';$('#sP').onchange=()=>{const k=$('#sP').value[0];$('#sU').value=k==='a'?'ftin':k==='e'?'ft':k==='m'?'m':'in'};
+ [{label:'Cancel',cancel:1},{label:'Apply',pri:1,fn:md=>{const pa=+md.querySelector('#sPa').value,re=+md.querySelector('#sRe').value;if(!(pa>0&&re>0)){toast('Enter both sides of the scale');return false}
+  const LEN={in:.0254,mm:.001,ft:.3048,m:1};const perPt=re*LEN[md.querySelector('#sRu').value]/(pa*LEN[md.querySelector('#sPu').value]/0.0254*72);
+  const v=md.querySelector('#sP').value;let label;if(v.startsWith('c:')){const st=nearStd(perPt,md.querySelector('#sU').value);label=st&&st.e<.001?st.label:`${pa}${md.querySelector('#sPu').value==='in'?'"':' mm'} = ${re} ${md.querySelector('#sRu').value}`}
+  else label=v==='f:1'?'1:1':md.querySelector('#sP').selectedOptions[0].textContent;
+  return applyScale({perPt,unit:md.querySelector('#sU').value,label},md,S.cur)}}]);
+ // the two sides of the scale follow the preset; typing in them makes it a custom scale
+ const fill=()=>{const[k,n0]=$('#sP').value.split(':'),n=+n0;const set=(a,au,r,ru)=>{$('#sPa').value=a;$('#sPu').value=au;$('#sRe').value=r;$('#sRu').value=ru};
+  if(k==='a')set(n,'in',1,'ft');else if(k==='e')set(1,'in',n,'ft');else if(k==='m')set(1,'mm',n,'mm');else if(k==='f')set(1,'in',1,'in')};
+ const pick=sc=>{if(!sc||sc.none)return null;const r=sc.perPt/PT_M,c=(a,b)=>Math.abs(a/b-1)<.002;for(const[,v]of ARCH)if(c(r,12/v))return'a:'+v;for(const n of ENG)if(c(r,12*n))return'e:'+n;for(const n of METRIC)if(c(r,n))return'm:'+n;if(c(r,1))return'f:1';return null};
+ const startSc=!cur.none?cur:prop&&prop.sc;const pv=pick(startSc);$('#sP').value=pv||(startSc?'c:0':'a:0.25');
+ if(pv||!startSc)fill();else{const ft=startSc.perPt/PT_M/12;$('#sPa').value=1;$('#sPu').value='in';$('#sRe').value=+ft.toFixed(4);$('#sRu').value='ft'}
+ $('#sP').onchange=()=>{const k=$('#sP').value[0];if(k!=='c')fill();$('#sU').value=k==='a'?'ftin':k==='e'?'ft':k==='m'?'m':k==='c'?$('#sU').value:'in'};
+ ['sPa','sRe','sPu','sRu'].forEach(id=>$('#'+id).addEventListener('input',()=>{$('#sP').value='c:0'}));
+ if($('#sUse'))$('#sUse').onclick=e=>{e.preventDefault();const v=pick(prop.sc);if(v){$('#sP').value=v;fill();$('#sU').value=prop.sc.unit||'ftin'}};
  $('#sCal').onclick=e=>{e.preventDefault();closeModal();setTool('calibrate');toast('Draw a line over a known dimension')}}
 function settingsDialog(){modal('Settings',`<div class="fld"><label>Author name (shown on markups)</label><input class="ti" id="stA" value="${esc(settings.author)}"></div>
  <label class="chk fld"><input type="checkbox" id="stW" ${settings.wheelZoom?'checked':''}> Mouse wheel zooms (Shift+wheel scrolls sideways; uncheck to scroll)</label>

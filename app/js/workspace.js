@@ -282,11 +282,11 @@ function filterThumbs(){const q=($('#wsThF')&&$('#wsThF').value||'').toLowerCase
 function thumbSvg(t){let s=t.querySelector('svg.wsTh');const c=t.querySelector('canvas');if(!c)return null;if(!s){s=document.createElementNS('http://www.w3.org/2000/svg','svg');s.setAttribute('class','wsTh');t.appendChild(s)}
  const p=S.pages[+t.dataset.p-1];if(!p)return null;s.setAttribute('viewBox',`0 0 ${p.w} ${p.h}`);s.setAttribute('preserveAspectRatio','none');s.style.left=c.offsetLeft+2+'px';s.style.top=c.offsetTop+2+'px';s.style.width=(c.clientWidth)+'px';s.style.height=(c.clientHeight)+'px';return s}
 let thT=0;function thumbMarkups(){clearTimeout(thT);thT=setTimeout(()=>{if($('#pane-pages').classList.contains('hide'))return;$$('#pane-pages .thumb').forEach(t=>{const s=thumbSvg(t);if(!s)return;const n=+t.dataset.p;
- s.innerHTML=(P.thumbMarkups?S.markups.filter(m=>m.page===n&&!m.hidden).map(m=>{try{return prims(m).filter(q=>q.k==='p').map(primSvg).join('')}catch(e){return''}}).join(''):'')+'<rect class="wsView" fill="rgba(61,139,253,.12)" stroke="#3d8bfd" stroke-width="0" width="0" height="0"/>'});updViewRect()},120)}
+ s.innerHTML=(P.thumbMarkups?S.markups.filter(m=>m.page===n&&!m.hidden).map(m=>{try{return prims(m).filter(q=>q.k==='p').map(primSvg).join('')}catch(e){return''}}).join(''):'')+'<rect class="wsView" fill="rgba(61,139,253,.07)" stroke="#3d8bfd" stroke-width="0" width="0" height="0"/>'});updViewRect()},120)}
 let vrRaf=0;function updViewRect(){if(vrRaf)return;vrRaf=requestAnimationFrame(()=>{vrRaf=0;if(!P.thumbView||!S.pages.length)return;const vr=viewer.getBoundingClientRect();
  $$('#pane-pages .thumb').forEach(t=>{const s=t.querySelector('svg.wsTh'),r=s&&s.querySelector('.wsView');if(!r)return;const p=S.pages[+t.dataset.p-1];if(!p){return}const pr=p.el.getBoundingClientRect();
   const x0=clamp((vr.left-pr.left)/S.zoom,0,p.w),y0=clamp((vr.top-pr.top)/S.zoom,0,p.h),x1=clamp((vr.right-pr.left)/S.zoom,0,p.w),y1=clamp((vr.bottom-pr.top)/S.zoom,0,p.h);
-  const vis=x1>x0&&y1>y0&&!(x0===0&&y0===0&&x1===p.w&&y1===p.h);r.setAttribute('x',x0);r.setAttribute('y',y0);r.setAttribute('width',vis?x1-x0:0);r.setAttribute('height',vis?y1-y0:0);r.setAttribute('stroke-width',vis?p.w/90:0)})})}
+  const vis=x1>x0&&y1>y0&&(x1-x0)*(y1-y0)<p.w*p.h*.8;/* no box when most of the page is in view */r.setAttribute('x',x0);r.setAttribute('y',y0);r.setAttribute('width',vis?x1-x0:0);r.setAttribute('height',vis?y1-y0:0);r.setAttribute('stroke-width',vis?p.w/90:0)})})}
 
 /* ===================== Links & Flags panels ===================== */
 const LK={list:[],doc:null,busy:false};
