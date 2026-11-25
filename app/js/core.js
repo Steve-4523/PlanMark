@@ -8,7 +8,7 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const uid=()=>'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc=new URL('lib/pdf.worker.min.js',location.href).href;
 /* hooks used by feature modules (js/*.js) */
-const H={under:[],over:[],open:[],change:[],ready:[],prefs:[],snap:null,down:null,props:[],measExtra:null,exportPage:[],ribbon:[],keys:[]};
+const H={idle:[],under:[],over:[],open:[],change:[],ready:[],prefs:[],snap:null,down:null,props:[],measExtra:null,exportPage:[],ribbon:[],keys:[]};
 const hook=(k,...a)=>{for(const f of H[k])try{f(...a)}catch(e){console.warn(k,e)}};
 
 /* ---------- icons ---------- */
@@ -309,12 +309,30 @@ function redrawPage(n){const p=S.pages[n-1];if(!p)return;let h='';
  p.svg.innerHTML=h}
 function redrawAll(){S.pages.forEach(p=>redrawPage(p.num))}
 function targetScale(p){const dpr=Math.min(window.devicePixelRatio||1,3);return Math.min(S.zoom*dpr,Math.sqrt(16e6/(p.w*p.h)),8192/Math.max(p.w,p.h))}
+// Pages are drawn one at a time, the one nearest the middle of the screen first. A page that scrolls out of view
+// before it is drawn is dropped (its work in the PDF engine is cancelled), so a fast scroll never leaves a queue
+// of pages you have passed. Until a page has its own drawing it shows its thumbnail, so nothing is ever blank.
+let rBusy=null,thTask=null;
+function rKey(p){const v=viewer.getBoundingClientRect(),r=p.el.getBoundingClientRect(),cy=v.top+v.height/2;return Math.abs((r.top+r.bottom)/2-cy)}
+function preview(p){if(p.rs||p._pv)return;try{const t=document.querySelector(`#pane-pages .thumb[data-p="${p.num}"] canvas`);if(!t||!t._sc||t.width<20)return;
+ const c=p.canvas;c.width=t.width;c.height=t.height;c.getContext('2d').drawImage(t,0,0);p._pv=1}catch(e){}}
 async function renderPage(p){const s=targetScale(p);if(Math.abs((p.rs||0)-s)<1e-3)return;if(p.task){if(Math.abs(p.taskScale-s)<1e-3)return;try{p.task.cancel()}catch(e){}}
  const doc=S.pdf;const page=await doc.getPage(p.num);if(doc!==S.pdf)return;const vp=page.getViewport({scale:s});const c=document.createElement('canvas');c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
  const task=page.render({canvasContext:c.getContext('2d'),viewport:vp});p.task=task;p.taskScale=s;
- try{await task.promise;if(doc!==S.pdf)return;p.canvas.replaceWith(c);p.canvas=c;p.rs=s}catch(e){}finally{if(p.task===task)p.task=null}}
-let rT=0;function scheduleRender(){clearTimeout(rT);rT=setTimeout(renderVisible,140)}
-function renderVisible(){for(const p of S.pages){if(p.vis)renderPage(p);else if(p.rs&&Math.abs(p.num-S.cur)>3){p.canvas.width=1;p.canvas.height=1;p.rs=0}}}
+ try{await task.promise;if(doc!==S.pdf)return;p.canvas.replaceWith(c);p.canvas=c;p.rs=s;p._pv=0}catch(e){}finally{if(p.task===task)p.task=null}}
+let rT=0;function scheduleRender(){clearTimeout(rT);rT=setTimeout(renderVisible,90)}
+function renderVisible(){
+ for(const p of S.pages){
+  if(!p.vis){if(p.task){try{p.task.cancel()}catch(e){}p.task=null}   // scrolled past before it was drawn
+   if((p.rs||p._pv)&&Math.abs(p.num-S.cur)>3){p.canvas.width=1;p.canvas.height=1;p.rs=0;p._pv=0}}
+  else if(!p.rs)preview(p)}
+ pump()}
+// one page at a time, nearest the middle first
+async function pump(){if(rBusy)return;const want=S.pages.filter(p=>p.vis&&Math.abs((p.rs||0)-targetScale(p))>=1e-3).sort((a,b)=>rKey(a)-rKey(b));if(!want.length){try{H.idle&&H.idle.forEach(f=>f())}catch(e){}return}
+ if(thTask){try{thTask.cancel()}catch(e){}thTask=null}   // a thumbnail being drawn gives way
+ const p=want[0],doc=S.pdf;rBusy=p;try{await renderPage(p)}catch(e){}rBusy=null;if(doc!==S.pdf)return;
+ // a page that left the view while being drawn gets cancelled the next time round
+ if(!p.vis&&p.task){try{p.task.cancel()}catch(e){}}pump()}
 const io=new IntersectionObserver(es=>{for(const e of es){const p=S.pages[+e.target.dataset.p-1];if(p)p.vis=e.isIntersecting}scheduleRender()},{root:viewer,rootMargin:'400px'});
 
 /* ---------- open / build ---------- */
@@ -361,13 +379,20 @@ async function drawThumb(p,c,tok){const want=thumbWant(c);if(!want)return;const 
  if(c._sc&&Math.abs(c._sc-sc)/sc<.06)return;c._sc=sc;
  const pg=await S.pdf.getPage(p.num);if(tok!==thumbTok)return;const k=sc<.6?2:1,vp=pg.getViewport({scale:sc*k});
  const t=document.createElement('canvas');t.width=Math.max(1,Math.round(vp.width));t.height=Math.max(1,Math.round(vp.height));const tx=t.getContext('2d');tx.fillStyle='#fff';tx.fillRect(0,0,t.width,t.height);
- await pg.render({canvasContext:tx,viewport:vp}).promise;if(tok!==thumbTok)return;
+ const tt=pg.render({canvasContext:tx,viewport:vp});thTask=tt;try{await tt.promise}finally{if(thTask===tt)thTask=null}if(tok!==thumbTok)return;
  const H=Math.max(1,Math.round(t.height/k));c.width=W;c.height=H;const cx=c.getContext('2d');cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';cx.drawImage(t,0,0,W,H);if(sc<.6)thumbInk(cx,W,H)}
-async function drawThumbs(tok){const pane=$('#pane-pages');
- for(const p of S.pages){if(tok!==thumbTok)return;const c=pane.querySelector(`.thumb[data-p="${p.num}"] canvas`);if(!c)continue;try{await drawThumb(p,c,tok)}catch(e){c._sc=0}}}
+// thumbnails are drawn only once the pages on screen are done, only for thumbnails you can see, nearest first
+const thVis=new Set();const thIO=new IntersectionObserver(es=>{for(const e of es){const n=+e.target.dataset.p;if(e.isIntersecting)thVis.add(n);else thVis.delete(n)}if(S.pdf)drawThumbs(thumbTok)},{rootMargin:'300px'});
+let thRun=0;
+async function drawThumbs(tok){if(thRun===tok)return;thRun=tok;const pane=$('#pane-pages');
+ try{for(;;){if(tok!==thumbTok)return;if(rBusy||S.pages.some(p=>p.vis&&!p.rs)){await new Promise(r=>setTimeout(r,150));continue}   // the drawing on screen comes first
+   const want=S.pages.filter(p=>thVis.has(p.num)).map(p=>({p,c:pane.querySelector(`.thumb[data-p="${p.num}"] canvas`)})).filter(x=>x.c&&!(x.c._sc&&Math.abs(x.c._sc-Math.min(thumbWant(x.c),1600)/x.p.w)/x.c._sc<.06)&&thumbWant(x.c)>0);
+   if(!want.length)return;const{p,c}=want[0];try{await drawThumb(p,c,tok)}catch(e){c._try=(c._try||0)+1;c._sc=c._try>3?-1:0}if(c._sc===undefined)c._sc=-1;
+   try{const pp=S.pages[p.num-1];if(pp&&pp.vis&&!pp.rs){pp._pv=0;preview(pp)}}catch(e){}}}
+ finally{if(thRun===tok)thRun=0}}
 let thumbRT=0;const thumbRO=new ResizeObserver(()=>{clearTimeout(thumbRT);thumbRT=setTimeout(()=>{if(S.pdf)drawThumbs(thumbTok)},250)});
-async function buildThumbs(){const tok=++thumbTok,pane=$('#pane-pages');pane.innerHTML='';thumbRO.disconnect();thumbRO.observe(pane);
- for(const p of S.pages){const d=document.createElement('div');d.className='thumb';d.dataset.p=p.num;const sc=150/Math.max(p.w,p.h);const c=document.createElement('canvas');const w=Math.round(p.w*sc),h=Math.round(p.h*sc);c.width=w;c.height=h;c.style.width=w+'px';c.style.aspectRatio=w+'/'+h;d.appendChild(c);d.append('Page '+p.num);d.onclick=()=>gotoPage(p.num);pane.appendChild(d)}
+async function buildThumbs(){const tok=++thumbTok,pane=$('#pane-pages');pane.innerHTML='';thumbRO.disconnect();thumbRO.observe(pane);thIO.disconnect();thVis.clear();
+ for(const p of S.pages){const d=document.createElement('div');d.className='thumb';d.dataset.p=p.num;const sc=150/Math.max(p.w,p.h);const c=document.createElement('canvas');const w=Math.round(p.w*sc),h=Math.round(p.h*sc);c.width=w;c.height=h;c.style.width=w+'px';c.style.aspectRatio=w+'/'+h;d.appendChild(c);d.append('Page '+p.num);d.onclick=()=>gotoPage(p.num);pane.appendChild(d);thIO.observe(d)}
  await new Promise(r=>setTimeout(r,600));
  await drawThumbs(tok)}
 

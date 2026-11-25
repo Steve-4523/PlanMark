@@ -602,7 +602,10 @@ async function unlockId(rec,password){const forge=await getForge();try{return Ob
 /* --- PDF helpers --- */
 const pdfStr=s=>'('+safeTxt(String(s)).replace(/[\\()]/g,m=>'\\'+m).replace(/[\r\n]+/g,' ')+')';
 function pdfDate(d=new Date()){const p=n=>String(n).padStart(2,'0'),off=-d.getTimezoneOffset(),sg=off>=0?'+':'-',a=Math.abs(off);return`D:${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}${sg}${p(a/60|0)}'${p(a%60)}'`}
-const isSigned=u8=>bin(u8).includes('/ByteRange');
+// look for /ByteRange straight in the bytes (turning a 180 MB file into text took seconds on every open)
+const _signed=new WeakMap();
+const isSigned=u8=>{if(!u8||!u8.length)return false;if(_signed.has(u8))return _signed.get(u8);const pat=[47,66,121,116,101,82,97,110,103,101];let i=u8.indexOf(47),r=false;
+ while(i>=0&&i<u8.length-pat.length){let k=1;while(k<pat.length&&u8[i+k]===pat[k])k++;if(k===pat.length){r=true;break}i=u8.indexOf(47,i+1)}_signed.set(u8,r);return r};
 function lastStartxref(s){const i=s.lastIndexOf('startxref');if(i<0)throw new Error('No startxref');return parseInt(s.slice(i+9).trim(),10)}
 async function deflateU8(u8){const cs=new CompressionStream('deflate'),w=cs.writable.getWriter();w.write(u8);w.close();return new Uint8Array(await new Response(cs.readable).arrayBuffer())}
 async function imageRGBA(src){const im=new Image();im.src=src;await im.decode();const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;const ctx=c.getContext('2d');ctx.drawImage(im,0,0);const d=ctx.getImageData(0,0,c.width,c.height).data,rgb=new Uint8Array(c.width*c.height*3),a=new Uint8Array(c.width*c.height);

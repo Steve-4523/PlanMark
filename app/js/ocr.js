@@ -24,6 +24,21 @@ async function ocrPage(n){const w=await getWorker(),p=S.pages[n-1],pg=await S.pd
   words.push({str:wd.text.trim(),x:px,y:py,w:vx1-vx0,h:vy1-vy0,rot:false,ocr:1,vb:[vx0,vy0,vx1,vy1]})};
  if(data.words&&data.words.length)data.words.forEach(addW);else walk(data.blocks);
  S.ocr[n]=words;delete S.textCache[n];return words.length}
+// read just one area of a page (box in page points from the top-left), e.g. a title block drawn as lines instead of text
+async function ocrRegion(n,box,dpi,opt){opt=opt||{};const w=await getWorker(),pg=await S.pdf.getPage(n);const s=(dpi||150)/72;const bw=box[2]-box[0],bh=box[3]-box[1];
+ const k=Math.min(s,Math.sqrt(9e6/(bw*bh)));const vp=pg.getViewport({scale:k,offsetX:-box[0]*k,offsetY:-box[1]*k});const c=document.createElement('canvas');c.width=Math.ceil(bw*k);c.height=Math.ceil(bh*k);
+ const ctx=c.getContext('2d',{willReadFrequently:true});ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);await pg.render({canvasContext:ctx,viewport:vp}).promise;
+ // drawing-program lettering is drawn with hairlines that come out pale grey: make anything not white solid black
+ // and take out long straight lines (table borders) so the letters next to them are read cleanly
+ try{const W=c.width,H=c.height,im=ctx.getImageData(0,0,W,H),d=im.data,b=new Uint8Array(W*H);for(let i=0,j=0;j<b.length;i+=4,j++)b[j]=d[i]*.3+d[i+1]*.59+d[i+2]*.11<215?1:0;
+  const L=opt.lines===false?1e9:Math.max(40,Math.round(k*14)),kill=new Uint8Array(W*H);
+  if(L<1e9)for(let y=0;y<H;y++){let st=-1;for(let x=0;x<=W;x++){const on=x<W&&b[y*W+x];if(on&&st<0)st=x;else if(!on&&st>=0){if(x-st>=L)for(let q=st;q<x;q++)kill[y*W+q]=1;st=-1}}}
+  if(L<1e9)for(let x=0;x<W;x++){let st=-1;for(let y=0;y<=H;y++){const on=y<H&&b[y*W+x];if(on&&st<0)st=y;else if(!on&&st>=0){if(y-st>=L)for(let q=st;q<y;q++)kill[q*W+x]=1;st=-1}}}
+  for(let j=0,i=0;j<b.length;j++,i+=4){const v=b[j]&&!kill[j]?0:255;d[i]=d[i+1]=d[i+2]=v}ctx.putImageData(im,0,0)}catch(e){}
+ const{data}=await w.recognize(c,{},{text:true,blocks:true});const words=[];
+ const add=wd=>{if(!wd.text||!wd.text.trim()||wd.confidence<30)return;const b=wd.bbox;words.push({str:wd.text.trim(),conf:wd.confidence,vb:[box[0]+b.x0/k,box[1]+b.y0/k,box[0]+b.x1/k,box[1]+b.y1/k]})};
+ const walk=o=>{if(!o)return;if(Array.isArray(o)){o.forEach(walk);return}if(o.words){for(const wd of o.words)add(wd)}else for(const kk of['blocks','paragraphs','lines'])if(o[kk])walk(o[kk])};
+ if(data.words&&data.words.length)data.words.forEach(add);else walk(data.blocks);c.width=c.height=1;return words}
 async function run(pages,skipText){cancel=false;let done=0,total=0;
  modal('OCR in progress',`<div class="hint" id="ocrMsg">Starting OCR engine…</div><div style="height:8px;background:var(--bg);border-radius:4px;margin-top:10px;overflow:hidden"><div id="ocrBar" style="height:100%;width:0;background:var(--acc)"></div></div>`,[{label:'Cancel',cancel:1,fn:()=>{cancel=true}}]);
  const msg=t=>{const e=$('#ocrMsg');if(e)e.textContent=t},bar=f=>{const e=$('#ocrBar');if(e)e.style.width=Math.round(f*100)+'%'};
@@ -49,5 +64,5 @@ H.exportPage.push(async(doc,pages,font)=>{for(const k in S.ocr){const n=+k,page=
   try{page.drawText(str,{x:w.x,y:w.y+w.h*0.15,size,font,opacity:0,rotate:PDFLib.degrees(p.vp.rotation||0)})}catch(e){}}}});
 H.open.push(()=>{S.ocr={}});
 H.ribbon.push({label:'OCR',title:'Recognize text in scanned pages',icon:'<path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3"/><path d="M8 9h8M8 12h8M8 15h5"/>',fn:dialog});
-window.PMOCR={run,dialog,ocrPage};
+window.PMOCR={run,dialog,ocrPage,ocrRegion};
 })();

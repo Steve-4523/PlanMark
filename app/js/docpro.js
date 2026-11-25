@@ -209,7 +209,9 @@ async function batchLink(){if(!S.pages.length)return toast('Open a PDF first');c
 async function runBatchLink(src,rep){try{let L;if(src==='labels')L=S.pages.map(p=>labelOf(p.num));else{const r=await pickTitleBlock('Batch Link: box the sheet number in the title block');toast('Reading sheet numbers…');L=[];for(const p of S.pages)L.push(await regionText(S.pdf,p.num,r))}
  const targets=L.map((l,i)=>({label:(l||'').trim(),page:i+1})).filter(t=>t.label.length>=2&&!/^\d{1,3}$/.test(t.label));if(!targets.length){toast('No sheet numbers found');return}
  const made=[];const isWord=c=>c&&/[A-Za-z0-9]/.test(c);
- for(const p of S.pages){const{items,vp}=await pageText(p.num);
+ // with sheet numbers known, use the live sheet-reference finder (it also matches A-101 written as A101, and detail bubbles)
+ if(src==='labels'&&window.PMSheetLinks){PMSheetLinks.SL.refs={};for(const p of S.pages)for(const r of await PMSheetLinks.refsOf(p.num)){const m=newMarkup('hlink',p.num,[[r.r[0],r.r[1]],[r.r[2],r.r[3]]],S.defaults.hlink);m.subject='Batch Link';m.link={type:'page',page:r.page};m.comment='→ '+r.label+(r.det?' · detail '+r.det:'');made.push(m)}}
+ else for(const p of S.pages){const{items,vp}=await pageText(p.num);
   for(const it of items){const s=it.str||'';if(!s)continue;const up=s.toUpperCase();
    for(const t of targets){if(t.page===p.num)continue;const q=t.label.toUpperCase();let idx=up.indexOf(q);
     while(idx>=0){if(!isWord(up[idx-1])&&!isWord(up[idx+q.length])){let r;const n=s.length||1;
@@ -418,5 +420,5 @@ function docDialog(){const b=(id,t,d)=>`<button class="btn" id="${id}" style="bo
  go('dtPL',labelsDialog);go('dtBM',need(bmFromLabels));go('dtTOC',need(tocDialog));go('dtLOG',need(drawingLog));go('dtHF',hfDialog);go('dtHX',removeHF);
  go('dtCR',cropDialog);go('dtBK',blankDialog);go('dtRP',replaceDialog);go('dtSL',slipDialog);go('dtRZ',resizeDialog);go('dtAT',()=>switchTab('attach'));go('dtRD',reduceDialog);go('dtSC',securityDialog)}
 H.ribbon.push({label:'Document',title:'Links, bookmarks, page labels, headers & footers, page tools, attachments, file size, security',icon:'<path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/><path d="M9 14a2 2 0 002.8 0l1.5-1.5a2 2 0 00-2.8-2.8l-.5.5"/><path d="M13 15.5l-.5.5a2 2 0 01-2.8-2.8"/>',fn:docDialog});
-Object.assign(window.PMDoc,{gc,decryptPdf,isEncrypted,batchLink,runBatchLink,labelsDialog,saveLabels,drawingLog,applyHF,removeHF,runCrop,runResize,runSlip,insertTOC,bmFromLabels,runReduce,securityDialog,followLink,loadLinks,labelOf,docDialog,md5,rc4,blankDialog,replaceDialog,cropDialog,slipDialog,hfDialog});
+Object.assign(window.PMDoc,{showLabels,gc,decryptPdf,isEncrypted,batchLink,runBatchLink,labelsDialog,saveLabels,drawingLog,applyHF,removeHF,runCrop,runResize,runSlip,insertTOC,bmFromLabels,runReduce,securityDialog,followLink,loadLinks,labelOf,docDialog,md5,rc4,blankDialog,replaceDialog,cropDialog,slipDialog,hfDialog});
 })();

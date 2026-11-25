@@ -25,13 +25,23 @@ function mk(kind,n){if(kind==='a')return{perPt:12/n*0.0254/72,unit:'ftin',label:
  return{perPt:n*0.0254/72,unit:n>=50?'m':'mm',label:'1:'+n,dec:2,prec:16}}
 
 // ---- read the page: text lines and straight line segments, in page points from the top-left
-const cache=new Map();
+const cache=new Map(),tcache=new Map();
+const keep=(m,k,v,max)=>{m.set(k,v);while(m.size>max)m.delete(m.keys().next().value);return v};   // only the last few pages stay in memory
+// waits until the pages on screen are drawn (reading a big sheet competes with drawing it)
+async function idle(ms){const t=Date.now();while(Date.now()-t<(ms||20000)){let busy=false;try{busy=!!rBusy||S.pages.some(p=>p.vis&&!p.rs)}catch(e){}if(!busy)return;await new Promise(r=>setTimeout(r,200))}}
+// text only (cheap): for sheet numbers and references
+async function readText(n){const key=S.fileKey+'|'+n;if(cache.has(key))return cache.get(key);if(tcache.has(key))return tcache.get(key);
+ const pg=await S.pdf.getPage(n),vp=pg.getViewport({scale:1});const tc=await pg.getTextContent();
+ const items=[];for(const it of tc.items){if(!it.str||!it.str.trim())continue;const t=it.transform;const p0=vp.convertToViewportPoint(t[4],t[5]);
+  const ux=t[0],uy=t[1],L=Math.hypot(ux,uy)||1,h=Math.hypot(t[2],t[3])||L;const p1=vp.convertToViewportPoint(t[4]+ux/L*(it.width||0),t[5]+uy/L*(it.width||0));
+  const ang=Math.atan2(p1[1]-p0[1],p1[0]-p0[0]);items.push({s:it.str,x:p0[0],y:p0[1],x2:p1[0],y2:p1[1],w:Math.hypot(p1[0]-p0[0],p1[1]-p0[1]),h,ang})}
+ return keep(tcache,key,{items,W:vp.width,H:vp.height},80)}
 async function readPage(n){const key=S.fileKey+'|'+n;if(cache.has(key))return cache.get(key);
  const pg=await S.pdf.getPage(n),vp=pg.getViewport({scale:1});const tc=await pg.getTextContent();
  const items=[];for(const it of tc.items){if(!it.str||!it.str.trim())continue;const t=it.transform;const p0=vp.convertToViewportPoint(t[4],t[5]);
   const ux=t[0],uy=t[1],L=Math.hypot(ux,uy)||1,h=Math.hypot(t[2],t[3])||L;const p1=vp.convertToViewportPoint(t[4]+ux/L*(it.width||0),t[5]+uy/L*(it.width||0));
   const ang=Math.atan2(p1[1]-p0[1],p1[0]-p0[0]);items.push({s:it.str,x:p0[0],y:p0[1],x2:p1[0],y2:p1[1],w:Math.hypot(p1[0]-p0[0],p1[1]-p0[1]),h,ang})}
- const segs=await segments(pg,vp);const r={items,segs,W:vp.width,H:vp.height};cache.set(key,r);return r}
+ const segs=await segments(pg,vp);const r={items,segs,W:vp.width,H:vp.height};return keep(cache,key,r,4)}
 async function segments(pg,vp){const O=pdfjsLib.OPS;let ol;try{ol=await pg.getOperatorList()}catch(e){return[]}
  const out=[],st=[];let m=[1,0,0,1,0,0];const mul=(a,b)=>[a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]];
  const P=(x,y)=>vp.convertToViewportPoint(m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]);
@@ -112,7 +122,7 @@ function dimensions(rd,opt){const res=[],mm=!!(opt&&opt.mm),dbg=opt&&opt.dbg;con
   const covered=t=>on.some(q=>t>=q.a-2&&t<=q.b+2);
   if(!isFinite(lo)||!isFinite(hi)||!covered(lo)||!covered(hi)){   // no ticks found: fall back to the drawn line's own ends, without joining neighbours
    const pieces=on.filter(q=>q.b>-half*3&&q.a<half*3);if(!pieces.length){no(it,'nopieces');continue}lo=Math.min(...pieces.map(q=>q.a));hi=Math.max(...pieces.map(q=>q.b))}
-  const L=hi-lo;if(!(L>it.w*1.6)||L<14){no(it,['short',L|0,it.w|0]);continue}
+  const L=hi-lo;if(!(L>it.w*1.6)||L<28){no(it,['short',L|0,it.w|0]);continue}   // short ones measure too roughly to judge a scale
   // the drawn line must actually run from end to end (it may break only where the text sits)
   {const iv=on.map(q=>[Math.max(q.a,lo),Math.min(q.b,hi)]).filter(q=>q[1]>q[0]).sort((p,q)=>p[0]-q[0]);const gaps=[];let e=lo;for(const[a,b]of iv){if(a>e+.5)gaps.push([e,a]);e=Math.max(e,b)}if(hi>e+.5)gaps.push([e,hi]);
    // the gap the text sits in is allowed (up to most of the line); any other breaks must be small
@@ -153,7 +163,7 @@ function titleOf(L,where){const c=L.filter(l=>l!==where&&Math.abs(l.ang-where.an
 // ---- scanned sheets (no text in the PDF): read the words with OCR, and measure dimension lines in the picture
 const ocrDone=new Map();
 // common OCR slips on drawings: 1"-0" for 1'-0", and dimensions read without their foot / inch marks (16-0 for 16'-0")
-const fixOcr=t=>{t=String(t).trim().replace(/(\d)\s*["”″]\s*-\s*(\d)/g,"$1'-$2");
+const fixOcr=t=>{t=String(t).trim().replace(/°/g,"'").replace(/(\d)\s*["”″]\s*-\s*(\d)/g,"$1'-$2").replace(/^(1\s*["”″]\s*=\s*\d{1,4})$/,"$1'");
  const m=/^(\d{1,3})\s*[-–]\s*(\d{1,2})["”″]?$/.exec(t);if(m&&+m[2]<12)return`${m[1]}'-${m[2]}"`;return t};
 async function scanText(n,rd){const key=S.fileKey+'|'+n;if(ocrDone.has(key))return ocrDone.get(key);
  let words=(S.ocr&&S.ocr[n])||null;if(!words){try{if(window.PMOCR&&PMOCR.ocrPage){await PMOCR.ocrPage(n);words=(S.ocr&&S.ocr[n])||[]}}catch(e){console.warn(e)}}if(!Array.isArray(words))words=[];
@@ -185,11 +195,29 @@ async function rasterDims(n,items){const res=[],dbg=window.__sdDbg=[];const clea
   if(Lpt>tl/k*1.2)res.push({text:clean(it.s).trim(),inches,lenPt:Lpt,inPerPt:inches/Lpt,scan:true})}
  return res}
 
+// ---- title blocks drawn as lines (Civil 3D / AutoCAD SHX text): read the title block area with OCR
+const tbDone=new Map();
+async function tbScan(n,rd){const key=S.fileKey+'|'+n;if(tbDone.has(key))return tbDone.get(key);if(!window.PMOCR||!PMOCR.ocrRegion)return null;
+ const W=rd.W,H=rd.H;let words=[];
+ // the bottom row of the title block (small boxed lettering, read sharp), then the area around it (big lettering and the graphic scale bar)
+ try{words=words.concat(await PMOCR.ocrRegion(n,[W*.6,H*.94,W,H],300));await idle();words=words.concat((await PMOCR.ocrRegion(n,[W*.55,H*.66,W,H*.95],160,{lines:false})))}catch(e){console.warn(e);if(!words.length)return null}
+ const items=words.map(w=>({s:fixOcr(w.str),x:w.vb[0],y:w.vb[3],x2:w.vb[2],y2:w.vb[3],w:w.vb[2]-w.vb[0],h:Math.max(4,w.vb[3]-w.vb[1]),ang:0}));
+ const r={items,bar:scaleBar(items)};tbDone.set(key,r);return r}
+// a graphic scale bar: numbers like 0 20 40 60 evenly spaced along one line -> feet per inch of paper
+function scaleBar(items){const nums=items.filter(i=>/^\d{1,4}$/.test(i.s)).map(i=>({v:+i.s,cx:(i.x+i.x2)/2,y:i.y,h:i.h}));let best=null;
+ for(const a of nums){const row=nums.filter(b=>Math.abs(b.y-a.y)<a.h*.7&&Math.abs(b.h-a.h)<a.h*.5).sort((p,q)=>p.cx-q.cx);if(row.length<3)continue;
+  for(let i=0;i+2<row.length;i++){const p=row[i],q=row[i+1],r=row[i+2];const d1=q.v-p.v,d2=r.v-q.v,s1=q.cx-p.cx,s2=r.cx-q.cx;
+   if(d1>0&&d1===d2&&s1>8&&Math.abs(s1/s2-1)<.08){const ftPerIn=d1/((s1+s2)/2/72);if(!best||row.length>best.n)best={ftPerIn,n:row.length,step:d1}}}}
+ return best}
+const ftPerInOf=sc=>inPerPt(sc)*72/12;
+
 // ---- the proposal for a page
 const last=new Map();   // fileKey|page -> the latest proposal (for the scale dialog, menu and Measure panel)
 async function propose(n){if(!S.pdf)return null;let rd=await readPage(n);let scanned=false;
  if(!rd.items.length){scanned=true;const items=await scanText(n,rd);rd=Object.assign({},rd,{items})}
- const pr=printed(rd),metric=pr.all.some(x=>/^1:/.test(x.sc.label)&&!pr.all.some(y=>!/^1:/.test(y.sc.label)));
+ let pr=printed(rd),tb=null;
+ if(!scanned&&!pr.all.length&&!pr.nts){await idle();tb=await tbScan(n,rd);if(tb){const p2=printed(Object.assign({},rd,{items:tb.items}));if(p2.all.length||p2.nts)pr=p2}}
+ const metric=pr.all.some(x=>/^1:/.test(x.sc.label)&&!pr.all.some(y=>!/^1:/.test(y.sc.label)));
  let dims=scanned?await rasterDims(n,rd.items):dimensions(rd,{mm:metric});
  if(!scanned&&!pr.all.length&&!dims.length)dims=dimensions(rd,{mm:true});   // no scale and no feet-and-inch dimensions: try millimetres
  const res={page:n,nts:pr.nts,scanned,details:[]};
@@ -209,6 +237,11 @@ async function propose(n){if(!S.pdf)return null;let rd=await readPage(n);let sca
     const box=detailBox(rd,x.dims,titles,avoid);if(!box)continue;
     const nm=titles.length?titleOf(pr.lines,titles[0]):'';res.details.push({name:nm||('Detail at '+x.f.sc.label),sc:x.f.sc,box,dims:x.dims.length})}}}
  else{const f=fromDims(dims,metric);if(f){res.source='dims';res.sc=f.sc;res.test={tested:dims.length,agree:f.agree,other:0,dims}}else{res.source=null;res.test={tested:dims.length,agree:0,other:0}}}
+ if(tb&&tb.bar){res.read='ocr';const fpi=tb.bar.ftPerIn;
+  if(res.sc&&!(res.test&&res.test.tested>=3)){const ok=Math.abs(fpi/ftPerInOf(res.sc)-1)<=.06;res.test={tested:1,agree:ok?1:0,other:0,dims:[],bar:fpi};
+   if(!ok){const c=[...ENG.map(n=>mk('e',n)),...ARCH.map(([,n])=>mk('a',n))].find(sc=>Math.abs(fpi/ftPerInOf(sc)-1)<=.04);if(c)res.alt={sc:c,agree:1}}}
+  else if(!res.sc){const c=[...ENG.map(n=>mk('e',n)),...ARCH.map(([,n])=>mk('a',n))].find(sc=>Math.abs(fpi/ftPerInOf(sc)-1)<=.04);if(c){res.source='bar';res.sc=c;res.test={tested:1,agree:1,other:0,dims:[],bar:fpi}}}}
+ else if(tb)res.read='ocr';
  last.set(S.fileKey+'|'+n,res);return res}
 
 // ---- the Measure panel: when the page has no scale, show what the sheet says, with Use
@@ -247,15 +280,16 @@ function hideBar(){const b=document.getElementById('sdBar');if(b){b.remove();set
 // a scale passes when most dimensions agree — or when at least 3 agree and the rest don't agree on anything else (stray text)
 function passes(p){const t=p.test||{};if(!t.tested)return true;const tot=t.agree+(t.other||0);if(tot>=Math.ceil(t.tested*.5))return true;
  if(tot>=3&&!p.alt){const rest=(t.dims||[]).filter(d=>!agrees(d,p.sc)&&!(p.details||[]).some(x=>agrees(d,x.sc)));return!fromDims(rest)}return false}
-function verdict(p){const t=p.test||{};if(!t.tested)return`<span class="mut">no written dimensions to check it against</span>`;
+function verdict(p){const t=p.test||{};if(t.bar)return t.agree?`<span class="ok">✓ matches the graphic scale bar</span>`:`<span class="warn">⚠ the graphic scale bar says 1" = ${Math.round(t.bar)}'</span>`;
+ if(!t.tested)return`<span class="mut">no written dimensions to check it against</span>`;
  const tot=t.agree+(t.other||0);
  if(passes(p)){const all=tot===t.tested?(t.tested>1?`all ${t.tested} dimensions`:'the dimension'):tot>=Math.ceil(t.tested*.5)?`${tot} of ${t.tested} dimensions`:`${tot} dimensions`;
   return`<span class="ok">✓ ${all} match</span>`}
  return`<span class="warn">⚠ only ${tot} of ${t.tested} dimensions match</span>`}
 function detailsTxt(p){const d=p.details||[];if(!d.length)return'';return` · + ${d.length} detail viewport${d.length>1?'s':''} <span class="mut">(dashed)</span>`}
 function showBar(p){hideBar();const host=document.getElementById('mainPane')||viewer.parentElement;if(!host)return;
- const d=document.createElement('div');d.id='sdBar';
- const what=p.source==='sheet'?`Sheet scale <b>${esc(p.sc.label)}</b>`:`Dimensions point to <b>${esc(p.sc.label)}</b>`;
+ const d=document.createElement('div');d.id='sdBar';d.dataset.page=p.page;
+ const what=p.source==='sheet'?`Sheet scale <b>${esc(p.sc.label)}</b>`:p.source==='bar'?`Graphic scale bar <b>${esc(p.sc.label)}</b>`:`Dimensions point to <b>${esc(p.sc.label)}</b>`;
  const extra=p.alt?` <span class="warn">— the dimensions point to ${esc(p.alt.sc.label)}</span>`:'';
  d.innerHTML=`<span>${what} · ${verdict(p)}${extra}${p.alt?'':detailsTxt(p)}</span><span class="sdQ" data-a="why" title="How this was worked out">?</span><button class="btn pri" data-a="page">Use</button><button class="btn" data-a="all" title="Read the scale printed on every page and set each page to its own">All pages…</button>${p.alt?`<button class="btn" data-a="alt">Use ${esc(p.alt.sc.label)}</button>`:''}<button class="btn" data-a="cal">Calibrate</button><button class="btn" data-a="x" title="Not now">✕</button>`;
  host.appendChild(d);setPreview(p.alt?null:p);
@@ -267,7 +301,7 @@ function showBar(p){hideBar();const host=document.getElementById('mainPane')||vi
 // "?" — what was read and how each dimension measured
 function why(p){const t=p.test||{},ds=(t.dims||[]).slice(0,40);const scs=[p.sc,...(p.details||[]).map(d=>d.sc)];
  modal('How the scale was found',`<div style="margin-bottom:6px">${p.source==='sheet'?`Printed on the sheet: <b>${esc(p.sc.label)}</b>${p.others&&p.others.length?` (also printed: ${p.others.map(esc).join(', ')})`:''}.`:`No scale is printed on this sheet; the written dimensions all point to <b>${esc(p.sc.label)}</b>.`}</div>
-  <div class="hint" style="margin-bottom:8px">Each written dimension was measured along its dimension line and compared with the scale.${p.scanned?' This is a scanned sheet, so the words were read with text recognition.':''}</div>
+  <div class="hint" style="margin-bottom:8px">${p.test&&p.test.bar?`The title block is drawn as lines, so it was read with text recognition. The graphic scale bar on the sheet measures 1" = ${(+p.test.bar).toFixed(1)}' — ${p.test.agree?'the same scale':'a different scale'}.`:`Each written dimension was measured along its dimension line and compared with the scale.${p.scanned?' This is a scanned sheet, so the words were read with text recognition.':p.read==='ocr'?' The title block was read with text recognition.':''}`}</div>
   ${ds.length?`<table style="font-size:12px;border-collapse:collapse;width:100%"><tr style="color:var(--mut)"><td style="padding:2px 6px">Written</td><td style="padding:2px 6px">Measures at ${esc(p.sc.label)}</td><td></td></tr>${ds.map(d=>{const okS=scs.find(sc=>agrees(d,sc));return`<tr><td style="padding:2px 6px">${esc(d.text)}</td><td style="padding:2px 6px;color:var(--mut)">${esc(fmtLen(d.lenPt*p.sc.perPt,p.sc))}</td><td style="padding:2px 6px">${okS?(okS===p.sc?'✓':'✓ <span style="color:var(--mut)">at '+esc(okS.label)+'</span>'):'✗'}</td></tr>`}).join('')}</table>`:'<div class="hint">No written dimensions were found to check against.</div>'}
   ${(p.details||[]).length?`<div style="margin-top:8px">Details at their own scale (shown dashed): ${p.details.map(d=>`<b>${esc(d.name)}</b> ${esc(d.sc.label)}`).join(' · ')}. Using the scale adds them as viewports, so measurements inside each one use its scale.</div>`:''}`,[{label:'OK',pri:1}])}
 // set every page from its own sheet
@@ -286,10 +320,10 @@ async function allPages(){if(!S.pdf)return;const N=S.pages.length,res=[];let sto
  if(set)afterApply();
  modal('Scale on every page',`<div style="margin-bottom:8px">${set} of ${N} pages set from their own sheet${vps?`, with ${vps} detail viewport${vps>1?'s':''}`:''}.</div><div style="max-height:50vh;overflow:auto"><table style="font-size:12px;border-collapse:collapse;width:100%">${rows.map(([n,t,c])=>`<tr><td style="padding:3px 8px;white-space:nowrap;color:var(--mut)">${n?esc(pgName(n)):''}</td><td style="padding:3px 8px;${c==='warn'?'color:#e3a008':''}">${t}</td></tr>`).join('')}</table></div>`,[{label:'OK',pri:1}])}
 async function check(){hideBar();if(!S.pdf||!S.pages.length)return;const n=S.cur,key=S.fileKey+'|'+n;if(S.scales[n]||S.scales.all||dismissed.has(key))return;
- const my=++busy;let p;try{p=await propose(n)}catch(e){return}if(my!==busy||S.cur!==n||S.scales[n]||S.scales.all)return;if(p&&p.sc)showBar(p);measNote()}
+ const my=++busy;await idle();if(my!==busy||S.cur!==n)return;let p;try{p=await propose(n)}catch(e){return}if(my!==busy||S.cur!==n||S.scales[n]||S.scales.all)return;if(p&&p.sc)showBar(p);measNote()}
 let t=0;const later=()=>{clearTimeout(t);t=setTimeout(check,700)};
-H.open.push(()=>{cache.clear();last.clear();hideBar();later()});
-setInterval(()=>{const b=document.getElementById('sdBar');if(b&&S.pdf&&!b.querySelector('[data-a=stop]')){try{const sc=scaleFor(S.cur);if(sc&&!sc.none)hideBar()}catch(e){}if(preview&&preview.page!==S.cur)hideBar()}if(S.pdf&&!document.getElementById('sdBar'))later.last!==S.cur&&(later.last=S.cur,later())},1000);
+H.open.push(()=>{cache.clear();tcache.clear();last.clear();tbDone.clear();hideBar();later()});
+setInterval(()=>{const b=document.getElementById('sdBar');if(b&&S.pdf&&!b.querySelector('[data-a=stop]')){try{const sc=scaleFor(S.cur);if(sc&&!sc.none)hideBar()}catch(e){}if(preview&&preview.page!==S.cur||b.dataset.page&&+b.dataset.page!==S.cur)hideBar()}if(S.pdf&&!document.getElementById('sdBar'))later.last!==S.cur&&(later.last=S.cur,later())},1000);
 // Tools > Check scale: runs the same test on the current page whatever its scale is (viewports use their own scale)
 async function checkNow(){if(!S.pdf)return;const n=S.cur,cur=scaleFor(n);let rd=await readPage(n),dims;
  if(!rd.items.length){toast('Reading the scanned sheet…');const items=await scanText(n,rd);rd=Object.assign({},rd,{items});dims=await rasterDims(n,items)}else dims=dimensions(rd,{mm:/^1:/.test(cur.label||'')});
@@ -307,5 +341,7 @@ async function dimUnder(n,a,b){try{const rd=await readPage(n);if(!rd.items.lengt
   const near=(p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1]);const e=Math.min(near(d.a,a)+near(d.b,b),near(d.a,b)+near(d.b,a));if(e>Math.max(30,L*.12))continue;if(!best||e<best.e)best={d,e}}
  return best&&best.d}catch(e){return null}}
 window.PM_EXTRA_CMDS_SD=()=>[{id:'sd:check',menu:'Tools',label:'Check scale',key:'',run:checkNow},{id:'sd:all',menu:'Tools',label:'Set scale on every page from its sheet…',key:'',run:allPages}];
-window.PMScaleDetect={passes,propose,readPage,printed,dimensions,test,checkNow,check,allPages,applyProposal,afterApply,dimUnder,parseDim,get last(){return last},lastFor:n=>last.get(S.fileKey+'|'+n)};
+// the drawing a title belongs to (used to open a detail from a detail bubble)
+async function areaOf(n,t){const rd=await readPage(n);return detailBox(rd,[],[t],[])}
+window.PMScaleDetect={readText,idle,areaOf,passes,propose,readPage,printed,dimensions,test,checkNow,check,allPages,applyProposal,afterApply,dimUnder,parseDim,get last(){return last},lastFor:n=>last.get(S.fileKey+'|'+n)};
 })();
