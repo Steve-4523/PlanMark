@@ -1,8 +1,8 @@
 {
  "app": "PlanMark",
- "version": "1.6.1",
+ "version": "1.6.2",
  "minShell": "1.0.0",
- "notes": "Fix: forms you fill in PlanMark now show their text correctly in Bluebeam and other PDF programs. Before, the typed words could show up there as Greek-looking symbols. If a form you already saved looks wrong in Bluebeam, open it in PlanMark and save it again.",
+ "notes": "Markups made in Bluebeam and other PDF programs now look the same in PlanMark. A picture or signature placed in Bluebeam shows as the picture (it was an empty box). Typed text keeps its real colour, size and place, with no box around it. Files PlanMark already read the old way are put right when you open them: save to keep it. Things added in another program to a file PlanMark saved now show up too. Names are no longer underlined as spelling mistakes.",
  "files": {
   "index.html": "37718e56acb4a477ab525ecd4de6a7a5fcbb9da567976a2dfb241cc18a0d9711",
   "config.json": "ae2ca167ff35af4879d7a5e12308ea3e121e77a047e3e73b07ea208d4ce7dac7",
@@ -35,7 +35,7 @@
   "js/output.js": "c84b082133a4274a63a2c7df4ebdef827fc8e5754fbcc11be6a8f76c35dc3980",
   "js/palette.js": "3a6bb22e361cc65ef8ebc3fc3d106347b3172e9d5ee717cfa7a7e3505a402e29",
   "js/panels.js": "134133d3e590dabe28770040695224f9d26358dc7e365069e2fdae2c58984184",
-  "js/pdfedit.js": "080749a5d1bf9a2676797314b33207fbc3317267ed22dd6f7e51bc31a82844b3",
+  "js/pdfedit.js": "9d1c3df81642798de202a2832f27cc3831e882cb18d2440af18a26cb7e30f0e5",
   "js/projects.js": "20ee06b7e25c5d477f1ed9267d0f64e82d700239ea6da3b2257f48d7554f0426",
   "js/propstabs.js": "1bbffee56852d29eb0a9efe8032040146a136cf76075686204b583ba0bc9a638",
   "js/qa1.js": "143f0d7f511b9aad4a3ebdeacc7cb139b007859c9c3deb894c28d141636fa56f",
@@ -61,7 +61,7 @@
   "js/toolbox.js": "2d091caf68e198ff44e5cb1e9dad251845edea9b9e3623ceddc12c1992a548e9",
   "js/toolgroups.js": "71e74117e07780800485b56eeeed752f4eb5d120116ce4f3987db70bf82aafdc",
   "js/views.js": "6f83c50b20e34cfedc19a1922ca58c33fd34d6965dbf76bc2855ac4a60261fa0",
-  "js/workspace.js": "8bb772316cccc414a8b0af1258383373bc6d9eee40c6c03b89fb5b632b0effb5",
+  "js/workspace.js": "496843b89b7e1d35540daa474b56ccf9329aa070336b871dde8e0747b45c7514",
   "img/icon-180.png": "2ed8b8fa65c3d9a44f30adcd39df1ebc3dd673d846d5fbadaf3e43e7a8db82ee",
   "img/icon-32.png": "0b42f6ee2ff38a3ec6eb32d837dd32da7e5d1c2e41f41b9da335de76d27333d4",
   "img/icon-512.png": "27800ebf7351b902204050570406f8c838e5ff9d410514014cb04ca170365fd9"

@@ -376,42 +376,234 @@ function colorOf(arr){if(!arr)return null;const v=arr.asArray().map(x=>x.asNumbe
 function pdfDate(s){const m=String(s||'').match(/D:(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?/);if(!m)return Date.now();return new Date(+m[1],(+m[2]||1)-1,+m[3]||1,+m[4]||0,+m[5]||0,+m[6]||0).getTime()}
 const LEMAP={OpenArrow:'open',ClosedArrow:'arrow',Circle:'dot',Slash:'tick',Butt:'bar',Square:'bar',Diamond:'arrow',ROpenArrow:'open',RClosedArrow:'arrow'};
 async function countImportable(){const pdf=S.pdf;if(!pdf)return 0;let n=0;for(let i=1;i<=Math.min(pdf.numPages,60);i++){if(S.pdf!==pdf)return 0;try{const a=await (await pdf.getPage(i)).getAnnotations();n+=a.filter(x=>MARKUP_SUBTYPES.includes(x.subtype)).length}catch(e){}}return n}
-async function renderStampImage(n,rect){// difference between page rendered with and without annotations = the stamp itself
+async function renderStampImage(n,rect){// difference between page rendered with and without annotations = the stamp itself (used only when a stamp has no picture of its own)
  const pg=await S.pdf.getPage(n),k=2,vp=pg.getViewport({scale:k}),mk=async mode=>{const c=document.createElement('canvas');c.width=Math.ceil(vp.width);c.height=Math.ceil(vp.height);const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);await pg.render({canvasContext:ctx,viewport:vp,annotationMode:mode}).promise;return c};
  const AM=pdfjsLib.AnnotationMode||{ENABLE:1,DISABLE:0};const a=await mk(AM.ENABLE),b=await mk(AM.DISABLE);const c1=vp.convertToViewportPoint(rect[0],rect[1]),c2=vp.convertToViewportPoint(rect[2],rect[3]);
  const x=Math.floor(Math.min(c1[0],c2[0])),y=Math.floor(Math.min(c1[1],c2[1])),w=Math.max(1,Math.ceil(Math.abs(c2[0]-c1[0]))),h=Math.max(1,Math.ceil(Math.abs(c2[1]-c1[1])));
  const da=a.getContext('2d').getImageData(x,y,w,h),db=b.getContext('2d').getImageData(x,y,w,h);for(let i=0;i<da.data.length;i+=4){const d=Math.abs(da.data[i]-db.data[i])+Math.abs(da.data[i+1]-db.data[i+1])+Math.abs(da.data[i+2]-db.data[i+2]);if(d<12)da.data[i+3]=0}
  const o=document.createElement('canvas');o.width=w;o.height=h;o.getContext('2d').putImageData(da,0,0);return o.toDataURL('image/png')}
-async function importAnnotations(opts={}){if(!S.bytes)return toast('Open a PDF first');const by0=S.bytes;const P=PL();const doc=await _load.call(PDFLib.PDFDocument,S.bytes,{ignoreEncryption:true,updateMetadata:false});const ctx=doc.context,L=o=>o instanceof P.PDFRef?ctx.lookup(o):o;
- const ms=[];let removed=0;const nmOf=v=>{const x=L(v);return x&&x.decodeText?x.decodeText():''};const txt=v=>{const x=L(v);return x&&x.decodeText?x.decodeText():''};const num=v=>{const x=L(v);return x&&x.asNumber?x.asNumber():null};
- for(let pi=0;pi<doc.getPageCount();pi++){const node=doc.getPage(pi).node,n=pi+1;const annots=L(node.get(N('Annots')));if(!annots)continue;const keep=[],dropRefs=new Set();
-  const arr=annots.asArray();for(const ar of arr){const a=L(ar);if(!a||!a.get){keep.push(ar);continue}const st=nmOf(a.get(N('Subtype')));if(!MARKUP_SUBTYPES.includes(st)){keep.push(ar);continue}
-   const rect=(L(a.get(N('Rect')))||ctx.obj([0,0,0,0])).asArray().map(q=>L(q).asNumber());const V=(x,y)=>toVp(n,x,y);const color=colorOf(L(a.get(N('C'))))||'#e0312b',fill=colorOf(L(a.get(N('IC'))));
-   const bs=L(a.get(N('BS'))),bw=bs&&num(bs.get(N('W')))!=null?num(bs.get(N('W'))):(L(a.get(N('Border')))?(L(a.get(N('Border'))).asArray()[2]&&L(L(a.get(N('Border'))).asArray()[2]).asNumber()):1);
-   const dash=bs&&nmOf(bs.get(N('S')))==='D'?'dash':'';const ca=num(a.get(N('CA')));const it=nmOf(a.get(N('IT')));const measure=!!a.get(N('Measure'))||/Dimension/.test(it);const be=L(a.get(N('BE')));const cloudy=be&&nmOf(be.get(N('S')))==='C';
-   const base={stroke:color,width:bw==null?1:bw,opacity:ca==null?1:ca};if(dash)base.dash=dash;const meta={comment:txt(a.get(N('Contents'))),author:txt(a.get(N('T')))||'Imported',created:pdfDate(txt(a.get(N('CreationDate')))||txt(a.get(N('M')))),subject:txt(a.get(N('Subj')))};
-   const vr=[V(rect[0],rect[3]),V(rect[2],rect[1])];const pts4=(v)=>{const p=[];for(let i=0;i+1<v.length;i+=2)p.push(V(v[i],v[i+1]));return p};const nums=k=>{const x=L(a.get(N(k)));return x?x.asArray().map(q=>L(q).asNumber()):null};
-   const add=(type,pts,extra={})=>{const m=newMarkup(type,n,pts,Object.assign({},S.defaults[type]||{},base,extra.style||{}));delete extra.style;Object.assign(m,meta,extra);if(!m.subject)m.subject=defSubject(type);m.imported=st;ms.push(m)};
-   try{switch(st){
-    case'Square':add('rect',vr,{style:{fill:fill||'none',fillOpacity:fill?(ca==null?1:ca):.3}});break;
-    case'Circle':add('ellipse',vr,{style:{fill:fill||'none'}});break;
-    case'Line':{const l=nums('L');const le=L(a.get(N('LE')));const les=le?le.asArray().map(nmOf):[];add(measure?'length':(LEMAP[les[1]]?'arrow':'line'),[V(l[0],l[1]),V(l[2],l[3])],{style:{headS:LEMAP[les[0]]||'',headE:LEMAP[les[1]]||''}});break}
-    case'PolyLine':add(measure?'polylength':'polyline',pts4(nums('Vertices')));break;
-    case'Polygon':add(measure?'area':cloudy?'cloud':'polygon',pts4(nums('Vertices')),{style:{fill:fill||(measure?S.defaults.area.fill:'none')}});break;
-    case'Ink':{const il=L(a.get(N('InkList')));if(il)il.asArray().forEach(s=>{const v=L(s).asArray().map(q=>L(q).asNumber());const p=pts4(v);if(p.length>1)add('pen',p)});break}
-    case'FreeText':{const da=txt(a.get(N('DA')))||'';const fs=+(da.match(/([\d.]+)\s+Tf/)||[])[1]||12;const cm=da.match(/([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+rg/);const tc=cm?rgbHex([+cm[1],+cm[2],+cm[3]]):color;
-     const cl=nums('CL');if(cl&&cl.length>=4)add('callout',[V(cl[0],cl[1]),vr[0],vr[1]],{text:meta.comment,comment:'',style:{fontSize:fs,color:tc,stroke:color,fill:fill||'#ffffff'}});else add('text',vr,{text:meta.comment,comment:'',style:{fontSize:fs,color:tc,fill:fill||'#ffffff',width:bw==null?1:bw}});break}
-    case'Text':add('note',[V(rect[0],rect[3])]);break;
-    case'Highlight':case'Underline':case'StrikeOut':case'Squiggly':{const qp=nums('QuadPoints')||[rect[0],rect[3],rect[2],rect[3],rect[0],rect[1],rect[2],rect[1]];const rects=[];for(let i=0;i+7<qp.length;i+=8){const c=[V(qp[i],qp[i+1]),V(qp[i+2],qp[i+3]),V(qp[i+4],qp[i+5]),V(qp[i+6],qp[i+7])];rects.push([Math.min(...c.map(q=>q[0])),Math.min(...c.map(q=>q[1])),Math.max(...c.map(q=>q[0])),Math.max(...c.map(q=>q[1]))])}
-     const type=st==='Highlight'?'texthl':st==='StrikeOut'?'strikeout':'underline';const bb=ptsBox(rects.flatMap(r=>[[r[0],r[1]],[r[2],r[3]]]));add(type,[[bb[0],bb[1]],[bb[2],bb[3]]],{rects,style:st==='Squiggly'?{dash:'dot'}:{}});break}
-    case'Stamp':{const png=await renderStampImage(n,rect);add('image',vr,{img:png,style:{width:0}});break}}
-    dropRefs.add(ar.toString());removed++;const pop=a.get(N('Popup'));if(pop)dropRefs.add(pop.toString())}catch(err){console.warn('import annot',st,err);keep.push(ar)}}
-  const kept=keep.filter(r=>!dropRefs.has(r.toString())&&!(L(r)&&nmOf(L(r).get&&L(r).get(N('Subtype')))==='Popup'&&dropRefs.has((L(r).get(N('Parent'))||'').toString())));
-  node.set(N('Annots'),ctx.obj(kept))}
- if(!ms.length){toast('No comments/markups from other apps found in this PDF');return{imported:0}}
+
+/* ---- What an annotation really looks like ----
+   Every PDF app shows an annotation by drawing the picture stored with it (its "appearance"). The loose settings beside
+   it (font size, colours, where the words sit in the box) are written differently by every app and are often out of
+   date: Bluebeam, Apple Preview and Foxit all disagree. Reading those settings gave red text that should be black,
+   words in boxes, words in the wrong place, and an empty box for a picture (1.6.1 and earlier).
+   So text, pictures and stamps are read from the appearance itself: each one is drawn alone on a see-through page and
+   measured — where each line of words sits, how big, which colour, and whether there is an outline or a background. */
+const IMP_V=2;   // which version of this reader made a markup (kept on it as impV)
+const cleanTxt=s=>String(s==null?'':s).replace(/\r\n?/g,'\n').replace(/\s+$/,'');
+const squash=s=>String(s||'').replace(/\s+/g,'');
+function annotReader(doc){const P=PL(),ctx=doc.context,L=o=>o instanceof P.PDFRef?ctx.lookup(o):o;
+ const nmOf=v=>{const x=L(v);return x&&x.decodeText?x.decodeText():''},txt=nmOf,num=v=>{const x=L(v);return x&&x.asNumber?x.asNumber():null};
+ // the appearance, when it is one picture (a set of on/off states is not used)
+ const apOf=a=>{try{const ap=L(a.get(N('AP'))),n=ap&&ap.get?L(ap.get(N('N'))):null;return n instanceof P.PDFStream?n:null}catch(e){return null}};
+ // biggest picture used by an appearance (0 when it has none); looks inside nested drawings too
+ const picPx=(n,depth)=>{let px=0;try{const res=L(n.dict.get(N('Resources'))),xo=res&&res.get?L(res.get(N('XObject'))):null;if(!xo||!xo.entries)return 0;
+   for(const[,v]of xo.entries()){const x=L(v);if(!x||!x.dict)continue;const st=nmOf(x.dict.get(N('Subtype')));
+    if(st==='Image')px=Math.max(px,num(x.dict.get(N('Width')))||1,num(x.dict.get(N('Height')))||1);else if(st==='Form'&&(depth||0)<3)px=Math.max(px,picPx(x,(depth||0)+1))}}catch(e){}return px};
+ // a picture placed on the page: Bluebeam saves one as a square with the picture inside (/IT /SquareImage), others as a stamp
+ const picOf=(a,st)=>{if(!['Stamp','Square','Circle','Polygon'].includes(st))return 0;const n=apOf(a);if(!n)return 0;const px=picPx(n);
+   if(st==='Stamp')return px||1;if(px)return px;return /Image|Snapshot/i.test(nmOf(a.get(N('IT'))))||a.get(N('Image'))?1:0};
+ const rectOf=a=>{const r=L(a.get(N('Rect')));if(!r||!r.asArray)return null;const v=r.asArray().map(q=>num(q));if(v.length<4||v.some(q=>q==null||!isFinite(q)))return null;return v};
+ // the loose text settings, used only when the appearance cannot be read
+ const textHints=a=>{const da=txt(a.get(N('DA')))||'',ds=txt(a.get(N('DS')))||'',rc=txt(a.get(N('RC')))||'',o={};
+   let m=rc.match(/font-size\s*:\s*([\d.]+)\s*pt/i)||ds.match(/font-size\s*:\s*([\d.]+)\s*pt/i)||ds.match(/font\s*:[^;]*?([\d.]+)\s*pt/i);
+   if(m&&+m[1]>0)o.size=+m[1];else{m=da.match(/([\d.]+)\s+Tf/);if(m&&+m[1]>0)o.size=+m[1]}
+   m=rc.match(/(?<![-\w])color\s*:\s*#([0-9a-f]{6})/i)||ds.match(/(?<![-\w])color\s*:\s*#([0-9a-f]{6})/i);
+   if(m)o.color='#'+m[1].toLowerCase();
+   else{const rg=da.match(/([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+rg\b/),k=da.match(/([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+k\b/),g=da.match(/(?:^|\s)([\d.]+)\s+g\b/);
+    if(rg)o.color=rgbHex([+rg[1],+rg[2],+rg[3]]);else if(k)o.color=rgbHex([(1-k[1])*(1-k[4]),(1-k[2])*(1-k[4]),(1-k[3])*(1-k[4])]);else if(g)o.color=rgbHex([+g[1],+g[1],+g[1]])}
+   const all=ds+' '+rc,face=da+' '+ds;
+   if(/font-weight\s*:\s*(bold|[6-9]00)/i.test(all)||/\/\S*Bold/i.test(da))o.bold=true;
+   if(/font-style\s*:\s*(italic|oblique)/i.test(all)||/\/\S*(Italic|Oblique)/i.test(da))o.italic=true;
+   if(/Courier|monospace/i.test(face))o.font='Courier';else if(/Times|Georgia|(?<!sans-)serif/i.test(face))o.font='Times';
+   return o};
+ return{P,ctx,L,nmOf,txt,num,apOf,picOf,rectOf,textHints}}
+
+// which colours an appearance is drawn with: a background, an outline, and the ink of the words
+function inkOf(g,W,H,k,inset){const d=g.getImageData(0,0,W,H).data,all=new Map(),ring=new Map(),t=Math.max(2,Math.round(k*.75)),a=Math.max(0,Math.round((inset||0)*k)),b=a+t;let op=0,ro=0,rt=0;   // the outline is looked for at the box's edge, or as far in as the annotation says its box is inset
+ const put=(M,i)=>{const q=((d[i]>>3)<<10)|((d[i+1]>>3)<<5)|(d[i+2]>>3);let e=M.get(q);if(!e)M.set(q,e=[0,0,0,0]);e[0]++;e[1]+=d[i];e[2]+=d[i+1];e[3]+=d[i+2]};
+ for(let y=0;y<H;y++){const dy=Math.min(y,H-1-y);for(let x=0;x<W;x++){const i=(y*W+x)*4,dd=Math.min(dy,x,W-1-x),edge=dd>=a&&dd<b;if(edge)rt++;if(d[i+3]<250)continue;op++;put(all,i);if(edge){ro++;put(ring,i)}}}
+ const top=M=>[...M.entries()].sort((a,b)=>b[1][0]-a[1][0]),hex=e=>'#'+[1,2,3].map(j=>Math.round(e[j]/e[0]).toString(16).padStart(2,'0')).join('');
+ const A=top(all),R=top(ring);let fill=null,fq=-1,border=null,bq=-1;
+ if(op>W*H*.55&&A[0]&&A[0][1][0]>op*.5){fill=hex(A[0][1]);fq=A[0][0]}
+ if(rt&&ro>rt*.35&&R[0]&&R[0][1][0]>ro*.5&&R[0][0]!==fq){border=hex(R[0][1]);bq=R[0][0]}   // .35: a dashed outline still counts; words alone never fill a third of the edge
+ const ink=A.find(e=>e[0]!==fq&&e[0]!==bq);return{fill,border,color:ink?hex(ink[1]):null}}
+// the lines of words in an appearance, in the page's own view: left end of each line, its baseline, its size
+function linesOf(tc,real){const U=pdfjsLib.Util,sc=real.scale||1,items=[];
+ for(const it of tc.items||[]){if(!it.str||!it.str.trim()||!it.transform)continue;const m=U.transform(real.transform,it.transform),size=Math.hypot(m[2],m[3]);if(!(size>.5))continue;
+  items.push({s:it.str,x:m[4],y:m[5],size,ang:Math.atan2(m[1],m[0])*180/Math.PI,w:(it.width||0)*sc})}
+ const up=items.every(it=>Math.abs(((it.ang+540)%360)-180)<3);if(!up)return{lines:items.map(it=>({x:it.x,y:it.y,size:it.size,s:it.s,w:it.w})),upright:false};
+ items.sort((a,b)=>a.y-b.y||a.x-b.x);const rows=[];
+ for(const it of items){const r=rows[rows.length-1];if(r&&Math.abs(r.y-it.y)<Math.max(1,r.size*.3))r.parts.push(it);else rows.push({y:it.y,size:it.size,parts:[it]})}
+ return{upright:true,lines:rows.map(r=>{r.parts.sort((a,b)=>a.x-b.x);let s='',end=null;for(const p of r.parts){if(end!=null&&p.x-end>r.size*.2&&!/\s$/.test(s))s+=' ';s+=p.s;end=p.x+p.w}
+  return{x:r.parts[0].x,y:r.y,size:Math.max(...r.parts.map(p=>p.size)),s:s.replace(/\s+$/,''),w:end-r.parts[0].x}})}}
+// These small look-ups share one helper engine that stays ready: starting a fresh one each time cost most of a second.
+let _apWorker=null;
+function apOpen(data){let w=null;try{if(!_apWorker||_apWorker.destroyed)_apWorker=new pdfjsLib.PDFWorker({name:'pm-annots'});w=_apWorker}catch(e){w=null}
+ return pdfjsLib.getDocument(Object.assign({data,isEvalSupported:false,password:''},w?{worker:w}:{})).promise}   // password given (empty): a locked file is skipped quietly, never asked about a second time
+/* Draw each appearance alone and measure it. list: [{a (the annotation), n (page number), px (largest picture, 0 = text)}].
+   One small PDF is built with a page per appearance, so the PDF engine is started once however many there are. */
+async function apProbe(doc,list){const out=new Map();if(!list.length||!window.pdfjsLib)return out;const R_=annotReader(doc),P=R_.P,L=R_.L,num=R_.num;
+ const mini=await P.PDFDocument.create(),copier=P.PDFObjectCopier.for(doc.context,mini.context),jobs=[];
+ for(const it of list){try{const n=R_.apOf(it.a),r=R_.rectOf(it.a);if(!n||!r||!S.pages[it.n-1])continue;
+   const R=[Math.min(r[0],r[2]),Math.min(r[1],r[3]),Math.max(r[0],r[2]),Math.max(r[1],r[3])],w=R[2]-R[0],h=R[3]-R[1];if(!(w>.5&&h>.5)||w>14400||h>14400)continue;
+   const bb=L(n.dict.get(N('BBox'))),B=bb&&bb.asArray?bb.asArray().map(num):[0,0,w,h],mx=L(n.dict.get(N('Matrix'))),M=mx&&mx.asArray?mx.asArray().map(num):[1,0,0,1,0,0];
+   // the appearance's own box, after its own turn, is fitted onto the annotation's rectangle (PDF rule for appearances)
+   const c=[[B[0],B[1]],[B[2],B[1]],[B[2],B[3]],[B[0],B[3]]].map(q=>app(M,q[0],q[1])),x0=Math.min(...c.map(q=>q[0])),x1=Math.max(...c.map(q=>q[0])),y0=Math.min(...c.map(q=>q[1])),y1=Math.max(...c.map(q=>q[1]));
+   if(!(x1-x0>1e-6&&y1-y0>1e-6))continue;const sx=w/(x1-x0),sy=h/(y1-y0);
+   const ref=mini.context.register(copier.copy(n)),pg=mini.addPage([w,h]);pg.node.set(N('MediaBox'),mini.context.obj(R));
+   const key=pg.node.newXObject('Ap',ref);pg.pushOperators(P.pushGraphicsState(),P.concatTransformationMatrix(sx,0,0,sy,R[0]-x0*sx,R[1]-y0*sy),P.drawObject(key),P.popGraphicsState());
+   jobs.push({it,w,h})}catch(e){console.warn('appearance',e)}}
+ if(!jobs.length)return out;let pj=null;
+ try{pj=await apOpen(await mini.save({useObjectStreams:false}));
+  // a few at a time, each on its own small canvas: most of the wait is the PDF engine getting each one's letters ready
+  let next=0;const run=async()=>{const cv=document.createElement('canvas'),g=cv.getContext('2d',{willReadFrequently:true});
+   for(;;){const i=next++;if(i>=jobs.length)return;const{it,w,h}=jobs[i];try{const real=S.pages[it.n-1].vp,pg=await pj.getPage(i+1);
+     // sharp enough to keep a picture's own dots and to read colours, without building huge canvases
+     let k=it.px>1?clamp(it.px/Math.max(w,h),2,8):4;k=Math.max(.5,Math.min(k,Math.sqrt((it.px?3e6:1e6)/(w*h))));
+     const vp=pg.getViewport({scale:k,rotation:real.rotation});cv.width=Math.max(1,Math.ceil(vp.width));cv.height=Math.max(1,Math.ceil(vp.height));g.clearRect(0,0,cv.width,cv.height);
+     const words=it.px?null:pg.getTextContent().catch(()=>({items:[]}));   // read the words while the picture is being drawn
+     await pg.render({canvasContext:g,viewport:vp,background:'rgba(0,0,0,0)'}).promise;
+     const info={};
+     if(it.px)info.png=cv.toDataURL('image/png');
+     else{Object.assign(info,inkOf(g,cv.width,cv.height,k,it.inset),linesOf(await words,real));if(!info.upright)info.png=cv.toDataURL('image/png')}
+     out.set(it.a,info)}catch(e){console.warn('appearance',e)}}};
+  await Promise.all(Array.from({length:Math.min(4,jobs.length)},run))}
+ catch(e){console.warn('appearance',e)}
+ finally{if(pj)try{await pj.destroy()}catch(e){}}
+ return out}
+
+/* One annotation -> the markups that stand for it (an ink annotation can be several). pr = what apProbe measured. */
+async function annotMarkups(R_,a,st,n,pr){const{L,nmOf,txt,num}=R_,ms=[];const rect=R_.rectOf(a)||[0,0,0,0];const V=(x,y)=>toVp(n,x,y);const color=colorOf(L(a.get(N('C'))))||'#e0312b',fill=colorOf(L(a.get(N('IC'))));
+ const bs=L(a.get(N('BS'))),bw=bs&&num(bs.get(N('W')))!=null?num(bs.get(N('W'))):(L(a.get(N('Border')))?(L(a.get(N('Border'))).asArray()[2]&&L(L(a.get(N('Border'))).asArray()[2]).asNumber()):1);
+ const dash=bs&&nmOf(bs.get(N('S')))==='D'?'dash':'';const ca=num(a.get(N('CA')));const it=nmOf(a.get(N('IT')));const measure=!!a.get(N('Measure'))||/Dimension/.test(it);const be=L(a.get(N('BE')));const cloudy=be&&nmOf(be.get(N('S')))==='C';
+ const base={stroke:color,width:bw==null?1:bw,opacity:ca==null?1:ca};if(dash)base.dash=dash;const meta={comment:txt(a.get(N('Contents'))),author:txt(a.get(N('T')))||'Imported',created:pdfDate(txt(a.get(N('CreationDate')))||txt(a.get(N('M')))),subject:txt(a.get(N('Subj')))};
+ const vr=[V(rect[0],rect[3]),V(rect[2],rect[1])];const pts4=(v)=>{const p=[];for(let i=0;i+1<v.length;i+=2)p.push(V(v[i],v[i+1]));return p};const nums=k=>{const x=L(a.get(N(k)));return x?x.asArray().map(q=>L(q).asNumber()):null};
+ const add=(type,pts,extra={})=>{const m=newMarkup(type,n,pts,Object.assign({},S.defaults[type]||{},base,extra.style||{}));delete extra.style;Object.assign(m,meta,extra);if(!m.subject)m.subject=defSubject(type);m.imported=st;m.impV=IMP_V;ms.push(m)};
+ // a picture (a signature, a photo, a snapshot, a stamp): kept as the picture it is, with its own see-through parts
+ if(R_.picOf(a,st)){let png=pr&&pr.png;if(!png&&st==='Stamp')png=await renderStampImage(n,rect);if(png){add('image',vr,{img:png,style:{width:0,opacity:1}});return ms}}
+ switch(st){
+  case'Square':add('rect',vr,{style:{fill:fill||'none',fillOpacity:fill?(ca==null?1:ca):.3}});break;
+  case'Circle':add('ellipse',vr,{style:{fill:fill||'none'}});break;
+  case'Line':{const l=nums('L');const le=L(a.get(N('LE')));const les=le?le.asArray().map(nmOf):[];add(measure?'length':(LEMAP[les[1]]?'arrow':'line'),[V(l[0],l[1]),V(l[2],l[3])],{style:{headS:LEMAP[les[0]]||'',headE:LEMAP[les[1]]||''}});break}
+  case'PolyLine':add(measure?'polylength':'polyline',pts4(nums('Vertices')));break;
+  case'Polygon':add(measure?'area':cloudy?'cloud':'polygon',pts4(nums('Vertices')),{style:{fill:fill||(measure?S.defaults.area.fill:'none')}});break;
+  case'Ink':{const il=L(a.get(N('InkList')));if(il)il.asArray().forEach(s=>{const v=L(s).asArray().map(q=>L(q).asNumber());const p=pts4(v);if(p.length>1)add('pen',p)});break}
+  case'FreeText':{const hint=R_.textHints(a),words=cleanTxt(meta.comment),lines=(pr&&pr.lines)||[],seen=lines.length>0;
+   const size=Math.round((seen?[...lines.map(l=>l.size)].sort((p,q)=>p-q)[lines.length>>1]:(hint.size||12))*100)/100;
+   const face={};if(hint.font)face.font=hint.font;if(hint.bold)face.bold=true;if(hint.italic)face.italic=true;
+   const cl=nums('CL');
+   if(cl&&cl.length>=4){const tc=hint.color||(pr&&pr.color)||'#000000';   // a callout's picture also holds its pointer line, so its colours are read from its settings
+    add('callout',[V(cl[0],cl[1]),vr[0],vr[1]],{text:words,comment:'',style:Object.assign({fontSize:size,color:tc,stroke:color,fill:fill||'#ffffff'},face)});break}
+   const tc=(pr&&pr.color)||hint.color||'#000000';
+   // words turned sideways on the sheet stay exactly as drawn (as a picture); the words themselves are kept in the comment
+   if(seen&&!pr.upright&&pr.png){add('image',vr,{img:pr.png,comment:words,style:{width:0,opacity:1}});break}
+   const same=seen&&squash(lines.map(l=>l.s).join(''))===squash(words),asShown=lines.map(l=>l.s).join('\n');
+   // plain words on the page (a typewriter, or a text box with no outline and no background): put exactly where they were
+   if(seen&&!pr.border&&!pr.fill){const text=same&&lines.length>1&&words.split('\n').length!==lines.length?asShown:words;
+    add('typewriter',[[Math.min(...lines.map(l=>l.x)),lines[0].y-size*.95]],{text,comment:'',style:Object.assign({fontSize:size,color:tc,stroke:tc,width:0},face)});break}
+   // a real box: an outline or a background that shows
+   const box=pr?{fill:pr.fill||'none',fillOpacity:1,width:pr.border?(bw>0?bw:1):0,stroke:pr.border||color}:{fill:fill||'none',width:bw==null?1:bw};
+   let text=words;if(same&&lines.length>1){const b=normBox(vr[0],vr[1]),pad=Math.max(3,size*.35);if(wrap(words,b[2]-b[0]-pad*2,size,face).length!==lines.length)text=asShown}
+   add('text',vr,{text,comment:'',boxText:text,style:Object.assign({fontSize:size,color:tc},box,face)});break}
+  case'Text':add('note',[V(rect[0],rect[3])]);break;
+  case'Highlight':case'Underline':case'StrikeOut':case'Squiggly':{const qp=nums('QuadPoints')||[rect[0],rect[3],rect[2],rect[3],rect[0],rect[1],rect[2],rect[1]];const rects=[];for(let i=0;i+7<qp.length;i+=8){const c=[V(qp[i],qp[i+1]),V(qp[i+2],qp[i+3]),V(qp[i+4],qp[i+5]),V(qp[i+6],qp[i+7])];rects.push([Math.min(...c.map(q=>q[0])),Math.min(...c.map(q=>q[1])),Math.max(...c.map(q=>q[0])),Math.max(...c.map(q=>q[1]))])}
+   const type=st==='Highlight'?'texthl':st==='StrikeOut'?'strikeout':'underline';const bb=ptsBox(rects.flatMap(r=>[[r[0],r[1]],[r[2],r[3]]]));add(type,[[bb[0],bb[1]],[bb[2],bb[3]]],{rects,style:st==='Squiggly'?{dash:'dot'}:{}});break}
+  case'Stamp':{const png=(pr&&pr.png)||await renderStampImage(n,rect);add('image',vr,{img:png,style:{width:0}});break}}
+ return ms}
+/* Every markup-type annotation of a PDF -> markups. strip: take the converted ones off the pages (they become markups).
+   skip(a): leave an annotation alone (PlanMark's own, or one the file already had). */
+async function convertAnnots(doc,opts={}){const R_=annotReader(doc),{L,nmOf,ctx}=R_,ms=[];let removed=0;const pagesA=[],probeList=[];
+ for(let pi=0;pi<doc.getPageCount();pi++){const node=doc.getPage(pi).node,n=pi+1;const annots=L(node.get(N('Annots')));if(!annots||!annots.asArray||!S.pages[pi])continue;const items=[];
+  for(const ar of annots.asArray()){const a=L(ar);const st=a&&a.get?nmOf(a.get(N('Subtype'))):'';const take=!!st&&MARKUP_SUBTYPES.includes(st)&&!(opts.skip&&opts.skip(a,st,n,R_));items.push({ar,a,st,take});
+   if(take){const px=R_.picOf(a,st);if(px||st==='FreeText'){const rd=L(a.get(N('RD'))),v=rd&&rd.asArray?rd.asArray().map(q=>R_.num(q)||0):[];probeList.push({a,n,px,inset:v.length===4?Math.min(...v):0})}}}
+  pagesA.push({node,n,items})}
+ const probe=probeList.length?await apProbe(doc,probeList):new Map();
+ for(const pg of pagesA){const keep=[],dropRefs=new Set();
+  for(const x of pg.items){if(!x.take){keep.push(x.ar);continue}
+   try{const got=await annotMarkups(R_,x.a,x.st,pg.n,probe.get(x.a));for(const m of got)ms.push(m);dropRefs.add(x.ar.toString());removed++;const pop=x.a.get(N('Popup'));if(pop)dropRefs.add(pop.toString())}
+   catch(err){console.warn('import annot',x.st,err);keep.push(x.ar)}}
+  if(opts.strip){const kept=keep.filter(r=>!dropRefs.has(r.toString())&&!(L(r)&&nmOf(L(r).get&&L(r).get(N('Subtype')))==='Popup'&&dropRefs.has((L(r).get(N('Parent'))||'').toString())));pg.node.set(N('Annots'),ctx.obj(kept))}}
+ return{ms,removed}}
+async function importAnnotations(opts={}){if(!S.bytes)return toast('Open a PDF first');const by0=S.bytes;const P=PL();const doc=await _load.call(PDFLib.PDFDocument,S.bytes,{ignoreEncryption:true,updateMetadata:false});
+ const{ms,removed}=await convertAnnots(doc,{strip:true});
+ if(!ms.length){if(!opts.auto)toast('No comments/markups from other apps found in this PDF');return{imported:0}}
  const bytes=new Uint8Array(await doc.save());if(S.bytes!==by0)return{imported:0,stale:true};const markups=S.markups.concat(ms),scales=S.scales;
  await openBytes(bytes,S.fileName,{markups,scales});toast(`Imported ${ms.length} markup${ms.length>1?'s':''} from other apps — they are now editable`);return{imported:ms.length,removed}}
-let _impBusy=false;H.open.push(info=>{const by=S.bytes;setTimeout(async()=>{if(S.bytes!==by||_impBusy)return;const n=await countImportable();if(!n||S.bytes!==by||_impBusy)return;_impBusy=true;try{await importAnnotations({auto:true})}catch(e){showImportBanner(n)}finally{_impBusy=false}},info&&info.switched?150:900)});
+
+/* ---- A PlanMark file that another app then added to ----
+   A PlanMark-saved PDF reopens from the original kept inside it plus PlanMark's own markups. Anything another app added
+   afterwards (a signature placed in Bluebeam, a note) lives only in the outer file, so it was not shown, and the next
+   save dropped it. Those additions are now read from the outer file and become markups like any other. */
+let OUTER=null;
+// OUTER = the file as it was picked; .inner is set when it then reopened from the original kept inside it (only a PlanMark file does)
+{const _ob=openBytes;openBytes=async function(bytes,name,restored){let mine=null;if(!restored)mine=OUTER={bytes,name};else if(OUTER&&OUTER.name===name&&OUTER.bytes!==bytes)OUTER.inner=true;
+  try{return await _ob.apply(this,arguments)}finally{if(mine&&OUTER===mine)OUTER=null}}}   // an open that did not happen (wrong password, not a PDF) leaves nothing behind
+// A file exactly as PlanMark wrote it — nobody has saved it since: it opens with the first line PlanMark's PDF writer makes
+// and nothing has been added after its end. Such a file is not looked through at all (big sets open as fast as before).
+function asWritten(b){try{if(!b||b.length<64)return false;if(!/^%PDF-\d\.\d\n%\x81\x81\x81\x81\n/.test(lat(b.subarray(0,24))))return false;
+  const tail=lat(b.subarray(Math.max(0,b.length-1200))),m=/startxref\s+(\d+)\s+%%EOF\s*$/.exec(tail);if(!m)return false;const n=+m[1];if(!(n>0&&n<b.length))return false;
+  return !/\/Prev\b/.test(tail)&&!/\/Prev\b/.test(lat(b.subarray(n,Math.min(b.length,n+2048))))}catch(e){return false}}
+const annKey=(st,r)=>st+'|'+r.map(v=>Math.round(v)).join(',');
+async function importOuter(outer){const by=S.bytes,pdf0=S.pdf;if(!outer||!by||outer===by||!window.pdfjsLib)return{imported:0};let pj=null,found=0;const have=new Set();
+ try{// a quick look first, off the main thread: does the outer file hold markups the kept original does not?
+  pj=await apOpen(outer.slice());if(pj.numPages!==S.pages.length)return{imported:0,differ:true};
+  for(let i=1;i<=pj.numPages;i++){if(S.bytes!==by)return{imported:0,stale:true};const an=(await(await pj.getPage(i)).getAnnotations()).filter(x=>MARKUP_SUBTYPES.includes(x.subtype)&&x.rect);if(!an.length)continue;
+   const own=await(await pdf0.getPage(i)).getAnnotations();for(const x of own)if(x.rect)have.add(i+'|'+annKey(x.subtype,x.rect));
+   found+=an.filter(x=>!have.has(i+'|'+annKey(x.subtype,x.rect))).length}}
+ catch(e){console.warn('outer annotations',e);return{imported:0}}
+ finally{if(pj)try{await pj.destroy()}catch(e){}}
+ if(!found||S.bytes!==by)return{imported:0};
+ const doc=await _load.call(PDFLib.PDFDocument,outer,{ignoreEncryption:true,updateMetadata:false});
+ // same sheets in the same order and shape, or the positions would be wrong
+ for(let i=0;i<S.pages.length;i++){const p=doc.getPage(i),cb=p.getCropBox(),sz={width:cb.width,height:cb.height},rot=((p.getRotation().angle%360)+360)%360,vp=S.pages[i].vp,q=rot%180?[sz.height,sz.width]:[sz.width,sz.height];
+  if(rot!==(((vp.rotation||0)%360)+360)%360||Math.abs(q[0]-vp.width/(vp.scale||1))>1||Math.abs(q[1]-vp.height/(vp.scale||1))>1)return{imported:0,differ:true}}
+ const{ms}=await convertAnnots(doc,{skip:(a,st,n,R_)=>{if(/^pm-/.test(R_.txt(a.get(N('NM')))))return true;const r=R_.rectOf(a);return !r||have.has(n+'|'+annKey(st,[Math.min(r[0],r[2]),Math.min(r[1],r[3]),Math.max(r[0],r[2]),Math.max(r[1],r[3])]))}});
+ if(!ms.length||S.bytes!==by)return{imported:0};
+ pushUndo();for(const m of ms)S.markups.push(m);commit();toast(`Added ${ms.length} markup${ms.length>1?'s':''} made in another app — ${ms.length>1?'they are':'it is'} now editable`);return{imported:ms.length}}
+
+/* ---- Markups brought in by 1.6.1 or earlier ----
+   The old reader left a picture as an empty box and gave text the wrong colour, size, place and a white box. The
+   annotation each one came from is still inside the file (no longer listed on its page), so it is read again and the
+   markup is put right. Text is only touched when it is exactly as the old reader left it. */
+async function repairImports(){const by=S.bytes;const old=S.markups.filter(m=>m.imported&&!m.impV&&((m.type==='rect'&&m.imported==='Square')||(m.type==='text'&&m.imported==='FreeText')));if(!old.length||!by)return{fixed:0};
+ const doc=await _load.call(PDFLib.PDFDocument,by,{ignoreEncryption:true,updateMetadata:false}),R_=annotReader(doc),{P,L,nmOf,txt}=R_;
+ const listed=new Set(),pageNo=new Map();doc.getPages().forEach((p,i)=>{pageNo.set(p.ref.toString(),i+1);const an=L(p.node.get(N('Annots')));if(an&&an.asArray)for(const r of an.asArray())listed.add(r.toString())});
+ const left=[];for(const[ref,o]of doc.context.enumerateIndirectObjects()){if(!(o instanceof P.PDFDict)||listed.has(ref.toString()))continue;const st=nmOf(o.get(N('Subtype')));if(st!=='Square'&&st!=='FreeText')continue;
+  if(!R_.rectOf(o)||!R_.apOf(o))continue;const pr=o.get(N('P'));left.push({a:o,st,n:pr?pageNo.get(pr.toString()):null,px:R_.picOf(o,st)})}
+ // a typewriter never has a box: the old reader drew one (and a white background) round typewriter text from some apps
+ const unbox=list=>{let n=0,undo=false;for(const m of list){m.impV=1;const s=m.style||{};if(m.type!=='text'||m.subject!=='Typewriter'||!((s.width||0)>0||s.fill==='#ffffff'))continue;if(!undo){pushUndo();undo=true}
+   m.style=Object.assign({},s,{width:0,fill:s.fill==='#ffffff'?'none':s.fill});m.modified=Date.now();n++}if(n)commit();return n};
+ if(!left.length)return{fixed:unbox(old)};
+ const boxAt=(o,n)=>{const r=R_.rectOf(o.a);return normBox(toVp(n,r[0],r[3]),toVp(n,r[2],r[1]))},near=(b,c)=>b.every((v,i)=>Math.abs(v-c[i])<1.5);
+ const pairs=[];
+ for(const m of old){if(!S.pages[m.page-1])continue;const mb=normBox(m.pts[0],m.pts[1]);const pool=left.filter(o=>!o.used&&o.st===m.imported&&(o.n==null||o.n===m.page)&&(m.type==='rect'?o.px>0:true));
+  // text boxes grow downwards by themselves to fit their words, so a text is matched on its top edge and its two sides
+  const nearTop=(b,c)=>[0,1,2].every(i=>Math.abs(b[i]-c[i])<1.5);
+  let o=pool.find(x=>m.type==='rect'?near(boxAt(x,m.page),mb):nearTop(boxAt(x,m.page),mb)&&cleanTxt(txt(x.a.get(N('Contents'))))===cleanTxt(m.text));
+  if(!o&&m.type==='rect'){const same=pool.filter(x=>pdfDate(txt(x.a.get(N('CreationDate')))||txt(x.a.get(N('M'))))===m.created);if(same.length===1)o=same[0]}   // a picture that was moved since: found by when it was made
+  if(m.type==='text'&&(m.style||{}).fill!=='#ffffff')o=null;   // text somebody has restyled is left alone
+  if(o){o.used=true;pairs.push({m,o})}}
+ const paired=new Set(pairs.map(x=>x.m)),plain=unbox(old.filter(m=>!paired.has(m)));   // looked for, not found: not searched for again
+ if(!pairs.length)return{fixed:plain};
+ const probe=await apProbe(doc,pairs.map(x=>({a:x.o.a,n:x.m.page,px:x.o.px})));if(S.bytes!==by)return{fixed:0,stale:true};
+ let undo=false,fixed=0;
+ for(const{m,o}of pairs){if(!S.markups.includes(m))continue;let got=null;try{got=(await annotMarkups(R_,o.a,o.st,m.page,probe.get(o.a)))[0]}catch(e){console.warn('repair',e)}
+  if(!got||(m.type==='rect'&&got.type!=='image'))continue;if(!undo){pushUndo();undo=true}
+  if(got.type==='image'){const b0=normBox(got.pts[0],got.pts[1]),b1=normBox(m.pts[0],m.pts[1]);m.type='image';m.img=got.img;m.style=got.style;if(got.comment&&!m.comment)m.comment=got.comment;
+   // the box could not be seen, so if it was only nudged it goes back where the picture was made; a box that was resized is left as it is
+   if(Math.abs((b0[2]-b0[0])-(b1[2]-b1[0]))<1.5&&Math.abs((b0[3]-b0[1])-(b1[3]-b1[1]))<1.5)m.pts=got.pts}
+  else{m.type=got.type;m.pts=got.pts;m.style=got.style;m.text=got.text}
+  m.impV=IMP_V;m.modified=Date.now();fixed++}
+ if(fixed){commit();toast(`Restored ${fixed} item${fixed>1?'s':''} from another app (picture${fixed>1?'s':''} and text now show as they should) — save to keep`)}
+ return{fixed:fixed+plain}}
+let _impBusy=false;H.open.push(info=>{const by=S.bytes,outer=OUTER&&OUTER.inner&&OUTER.name===S.fileName&&OUTER.bytes!==by&&!asWritten(OUTER.bytes)?OUTER.bytes:null;OUTER=null;setTimeout(async()=>{if(S.bytes!==by||_impBusy)return;_impBusy=true;
+ try{if(S.markups.some(m=>m.imported&&!m.impV))try{await repairImports()}catch(e){console.warn('repair imports',e)}
+  if(S.bytes!==by)return;
+  if(outer){try{await importOuter(outer)}catch(e){console.warn('outer import',e)}return}
+  const n=await countImportable();if(!n||S.bytes!==by)return;try{await importAnnotations({auto:true})}catch(e){console.warn(e);showImportBanner(n)}}
+ finally{_impBusy=false}},info&&info.switched?150:900)});
 function showImportBanner(n){let b=$('#peImp');if(b)b.remove();b=document.createElement('div');b.id='peImp';b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:110px;z-index:60;background:var(--panel);border:1px solid var(--acc);border-radius:10px;padding:8px 12px;display:flex;gap:10px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.4)';
  b.innerHTML=`<span>This PDF has ${n} comment${n>1?'s':''} from another app.</span><button class="btn pri" id="peImpGo">Make editable</button><button class="btn" id="peImpX">✕</button>`;document.body.appendChild(b);$('#peImpGo').onclick=()=>{b.remove();importAnnotations()};$('#peImpX').onclick=()=>b.remove();setTimeout(()=>{if(b.isConnected)b.remove()},15000)}
 /* ---------------- XFDF export / import ---------------- */
@@ -558,6 +750,6 @@ document.addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('i
  else if(mod&&!e.shiftKey&&k==='d'&&e.altKey){e.preventDefault();propsDialog()}
  else if(k==='escape'&&(PASTE||panel)){PASTE=null;closePanel();updateRibbon()}},true);
 window.PM_EXTRA_SYNC_KEYS_PDFEDIT=[];
-window.PMPdfEdit={parseContent,analyzePage,applyEdits,getRuns,runAt,clientAnalysis,eraseContent,copyContent,pasteContent,doPaste:(n,pt)=>doPaste(S.pages[n-1],pt),replaceAll,replaceDialog,propsDialog,importAnnotations,importXfdfText,toXfdf,exportXfdf,
+window.PMPdfEdit={parseContent,analyzePage,applyEdits,getRuns,runAt,clientAnalysis,eraseContent,copyContent,pasteContent,doPaste:(n,pt)=>doPaste(S.pages[n-1],pt),replaceAll,replaceDialog,propsDialog,importAnnotations,importOuter,repairImports,convertAnnots,apProbe,asWritten,impBusy:()=>_impBusy,importXfdfText,toXfdf,exportXfdf,
  exportImages,exportText,exportDocx,exportXlsx,blankPdf,pdfFromImages,detectSkew,deskew,repairPdf,archivePdfa,saveVariant,contentDialog,addEdit,runEditData,canReuse,openPanel,closePanel,setClip:c=>{CLIP=c},getClip:()=>CLIP};
 })();

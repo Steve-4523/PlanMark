@@ -113,7 +113,8 @@ function installWrappers(){
    m.curves=Object.assign({},m.curves||{});if(Math.hypot(q[0],q[1])<1.5)delete m.curves[i];else m.curves[i]=q;if(!Object.keys(m.curves).length)delete m.curves;return}return _ah.apply(this,arguments)};
  const _ms=markupSvg;markupSvg=function(m,prev){let h=_ms.apply(this,arguments);if(prev)return h;let extra='';
   if(P.replyBadges&&m.replies&&m.replies.length){const b=bboxOf(m),k=1/S.zoom;extra+=`<g transform="translate(${b[2]} ${b[1]}) scale(${k})" pointer-events="none"><path d="M0 -14h16v10h-8l-4 4v-4h-4z" fill="#2563eb" stroke="#fff" stroke-width="1"/><text x="8" y="-7" font-size="8" fill="#fff" text-anchor="middle" font-family="Helvetica">${m.replies.length}</text></g>`}
-  if(P.spellUnderline&&WS.dict&&TEXTISH.has(m.type)&&m.text){for(const p of prims(m)){if(p.k!=='t'||p.align!=='start'||!p.s)continue;for(const x of misspelled(p.s)){const x0=p.x+tw(p.s.slice(0,x.i),p.size,p.bold,p.font,p.italic),w=tw(x.w,p.size,p.bold,p.font,p.italic),y=p.y+p.size*.55,a=Math.max(.6,p.size*.08);let d=`M${x0.toFixed(2)} ${y.toFixed(2)}`;for(let xx=x0,s=1;xx<x0+w;xx+=a*2,s=-s)d+=` L${(xx+a*2).toFixed(2)} ${(y+s*a).toFixed(2)}`;extra+=`<path d="${d}" stroke="#e11d48" stroke-width="${(p.size*.06).toFixed(2)}" fill="none" pointer-events="none"/>`}}}
+  if(P.spellUnderline&&WS.dict&&TEXTISH.has(m.type)&&m.text){for(const p of prims(m)){if(p.k!=='t'||p.align!=='start'||!p.s)continue;for(const x of misspelled(p.s)){if(/^[A-Z]/.test(x.w))continue;   // names of people, towns and companies are not in the word list: not marked on the sheet (F7 still lists them)
+   const x0=p.x+tw(p.s.slice(0,x.i),p.size,p.bold,p.font,p.italic),w=tw(x.w,p.size,p.bold,p.font,p.italic),y=p.y+p.size*.55,a=Math.max(.6,p.size*.08);let d=`M${x0.toFixed(2)} ${y.toFixed(2)}`;for(let xx=x0,s=1;xx<x0+w;xx+=a*2,s=-s)d+=` L${(xx+a*2).toFixed(2)} ${(y+s*a).toFixed(2)}`;extra+=`<path d="${d}" stroke="#e11d48" stroke-width="${(p.size*.06).toFixed(2)}" fill="none" pointer-events="none"/>`}}}
   return extra?h.replace(/<\/g>$/,extra+'</g>'):h};
  const _pu=pushUndo;pushUndo=function(){_pu.apply(this,arguments);const i=S.undo.length-1;if(i>=0&&typeof S.undo[i]==='string'){const o=new String(S.undo[i]);o.label=WS.nextLabel||null;o.at=Date.now();S.undo[i]=o;WS.nextLabel=null}};
  const _un=undo;undo=function(){const e=S.undo[S.undo.length-1],r=_un.apply(this,arguments);if(e&&S.redo.length){const k=S.redo.length-1,o=new String(S.redo[k]);o.label=e.label;o.at=e.at;S.redo[k]=o}renderHistory();return r};
@@ -517,6 +518,7 @@ function updStatus(){const st=$('#status');if(!st)return;let w=$('#wsStat');if(!
 
 /* ===================== text auto-size ===================== */
 function autoSize(){if(!P.autoSize)return;let ch=false;for(const m of S.markups){if(m.type!=='text'||!m.text||m.locked)continue;const b=normBox(m.pts[0],m.pts[1]),fs=m.style.fontSize||12,pad=Math.max(3,fs*.35),need=wrap(m.text,b[2]-b[0]-pad*2,fs,{font:m.style.font,bold:m.style.bold,italic:m.style.italic}).length*fs*1.2+pad*2;
+ if(m.boxText===m.text&&need<=b[3]-b[1]+.5)continue;   // a box read from another app keeps the size its author gave it, until its words are changed or no longer fit
  if(Math.abs((b[3]-b[1])-need)>.5&&need>fs){m.pts=[[b[0],b[1]],[b[2],b[1]+need]];ch=true;redrawPage(m.page)}}return ch}
 
 /* ===================== session memory (reopen last files) ===================== */
