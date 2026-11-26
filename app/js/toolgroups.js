@@ -25,6 +25,9 @@ let hiddenFam=new Set();   // families a setup (Estimating / PM / Field) leaves 
 let hiddenRib=null;        // Document buttons a setup leaves out (null = all shown)
 
 const css=document.createElement('style');css.textContent=`
+/* the highlighter and the pen show in colour, as in Bluebeam (1.6.6); the same wherever their buttons are */
+.tb[data-tool=highlight] svg,[data-t=highlight] svg{color:#f2c230}
+.tb[data-tool=pen] svg,[data-t=pen] svg{color:#3d8bfd}
 body.dl.tg #ribbon .tgOff,body.dl.tg #ribbon .tgOut{display:none!important}
 body.dl.tg #ribbon .sep{margin:3px 0}
 body.dl.tg #ribbon .tb.tgFam{position:relative}

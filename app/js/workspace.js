@@ -4,7 +4,7 @@
    spell check, auto-complete, status keys, Bluebeam-style keyboard shortcuts. */
 (function(){
 const WS_VER='1.4.0';   // the version the "What's new" list was last written for (not the app's version)
-const APP_VER='1.6.5';  // the app's version, written in by the release script: the website's About box showed WS_VER, so it said 1.4.0 for ever
+const APP_VER='1.6.6';  // the app's version, written in by the release script: the website's About box showed WS_VER, so it said 1.4.0 for ever
 const DEF_P={menu:true,crosshair:false,docDark:false,viewMode:false,rememberPos:true,reopenLast:false,showFiles:false,defLayout:'',lockFitWidth:false,
  reverseWheel:false,wheelSens:1,maxZoom:64,snapSens:9,snapColor:'#ff00ff',autoSize:true,popups:true,popOpacity:.95,thumbSize:150,thumbMarkups:true,thumbView:true,
  noLineWeights:false,replyBadges:true,shortcutSet:'bluebeam',statusKeys:{1:'Open',2:'In Progress',3:'Completed',4:'Accepted',5:'Rejected',6:'Field Verify'},
@@ -163,7 +163,12 @@ function closeCtx(){if(ctxEl){ctxEl.remove();ctxEl=null}$$('.wsDrop').forEach(d=
 function menuEl(items,x,y,cls){const d=document.createElement('div');if(cls)d.className=cls;else d.id='wsCtx';
  d.innerHTML=items.map((it,i)=>it==='-'||it.sep?'<div class="wsSep"></div>':it.head?`<div class="wsHd">${esc(it.head)}</div>`:`<div class="wsI ${it.dis?'dis':''} ${it.sub?'sub':''} ${it.check===true?'chk':it.check===false?'unchk':''}" data-i="${i}">${esc(it.label)}${it.key?`<span class="k">${esc(it.key)}</span>`:''}</div>`).join('');
  document.body.appendChild(d);const r=d.getBoundingClientRect();d.style.left=Math.max(4,Math.min(x,innerWidth-r.width-4))+'px';d.style.top=Math.max(4,Math.min(y,innerHeight-r.height-4))+'px';
- d.addEventListener('click',e=>{const el=e.target.closest('[data-i]');if(!el)return;const it=items[+el.dataset.i];if(!it||it.dis)return;if(it.sub){const rr=el.getBoundingClientRect();$$('.wsDrop.subm').forEach(s=>s.remove());menuEl(typeof it.sub==='function'?it.sub():it.sub,rr.right-2,rr.top,'wsDrop subm');return}closeCtx();try{it.run&&it.run()}catch(err){console.error(err);toast('Could not run: '+(err.message||err))}});
+ d.addEventListener('click',e=>{const el=e.target.closest('[data-i]');if(!el)return;const it=items[+el.dataset.i];if(!it||it.dis)return;if(it.sub){const rr=el.getBoundingClientRect();$$('.wsDrop.subm').forEach(s=>s.remove());menuEl(typeof it.sub==='function'?it.sub():it.sub,rr.right-2,rr.top,'wsDrop subm');return}
+  // rows that can be picked several at a time (File ▸ Open Recent): Ctrl+click ticks one and the menu stays; letting go of Ctrl, or a plain click, runs them all
+  if(it.multi){if(e.ctrlKey||e.metaKey){it._on=!it._on;el.classList.toggle('chk',it._on);el.style.background=it._on?'var(--accbg,rgba(61,139,253,.22))':'';return}const p=picked();if(p.length){if(!p.includes(it))p.push(it);closeCtx();runMany(p);return}}
+  closeCtx();try{it.run&&it.run()}catch(err){console.error(err);toast('Could not run: '+(err.message||err))}});
+ const picked=()=>items.filter(x=>x&&x.multi&&x._on),runMany=async list=>{for(const x of list){try{await x.run()}catch(err){console.error(err)}}};
+ if(items.some(x=>x&&x.multi)){const up=e=>{if(e.key!=='Control'&&e.key!=='Meta')return;if(!d.isConnected){removeEventListener('keyup',up,true);return}const p=picked();if(!p.length)return;removeEventListener('keyup',up,true);closeCtx();runMany(p)};addEventListener('keyup',up,true)}
  d.addEventListener('pointerover',e=>{const el=e.target.closest('[data-i]');if(!el)return;const it=items[+el.dataset.i];if(it&&it.sub&&!d.classList.contains('subm')){const rr=el.getBoundingClientRect();$$('.wsDrop.subm').forEach(s=>s.remove());menuEl(typeof it.sub==='function'?it.sub():it.sub,rr.right-2,rr.top,'wsDrop subm')}});
  return d}
 function ctx(x,y,items){closeCtx();ctxEl=menuEl(items,x,y)}
@@ -416,7 +421,8 @@ function menuItems(name){const cs=CMDS.filter(c=>!c.hidden&&(!c.when||c.when()))
   const f=grp('File'),i=f.findIndex(x=>/^Open\b/.test(x.label)),ago=t=>{const m=Math.max(0,(Date.now()-t)/60000);return m<1?'just now':m<60?Math.round(m)+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'};
   let rec=[];try{rec=(LS.get('pm:recentIdx',[])||[]).slice().sort((a,b)=>b.at-a.at).slice(0,12)}catch(e){}
   const short=n=>n.length>64?n.slice(0,40)+'…'+n.slice(-20):n;
-  const sub=rec.length?rec.map(r=>({label:short(r.name||'Untitled'),key:ago(r.at),run:()=>window.PMEasy&&PMEasy.openRecent?PMEasy.openRecent(r.key):PMRecent.get(r.key).then(q=>q&&openBytes(new Uint8Array(q.bytes),q.name))})):[{label:'No recent files yet',dis:true}];
+  const sub=rec.length?rec.map(r=>({label:short(r.name||'Untitled'),key:ago(r.at),multi:true,run:()=>window.PMEasy&&PMEasy.openRecent?PMEasy.openRecent(r.key):PMRecent.get(r.key).then(q=>q&&openBytes(new Uint8Array(q.bytes),q.name))})):[{label:'No recent files yet',dis:true}];
+  if(rec.length>1)sub.push({head:'Hold Ctrl and click to open several at once'});
   f.splice(i<0?0:i+1,0,{label:'Open Recent',sub});return f}
  return grp(name)}
 function buildMenu(){let bar=$('#wsMenu');if(!bar){bar=document.createElement('div');bar.id='wsMenu';$('#app').insertBefore(bar,$('#topbar'))}
