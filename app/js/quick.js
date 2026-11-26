@@ -194,7 +194,15 @@ function tipData(el){const raw=titleOf(el).trim();if(!raw)return null;
 let tip=null,tipFor=null,tipT=0,warm=0;
 function hideTip(){clearTimeout(tipT);if(tip&&tip.classList.contains('on')){tip.classList.remove('on');warm=performance.now()}
  if(tipFor){const el=tipFor;tipFor=null;if(el.dataset.qt!=null){if(!el.hasAttribute('title'))el.setAttribute('title',el.dataset.qt);delete el.dataset.qt}}}
-function showTip(el){const d=tipData(el);if(!d||!document.contains(el))return;if(!tip){tip=document.createElement('div');tip.id='qkTip';tip.setAttribute('role','tooltip');document.body.appendChild(tip)}
+// A tip that only repeats words you can already read in full says nothing (a file name in a list, a tab's title):
+// it is shown only when those words are cut short on the screen.
+function saysNothing(el,d){if(d.key||d.desc||d.hint)return false;const norm=s=>String(s||'').replace(/\s+/g,' ').trim().toLowerCase(),name=norm(d.name);if(!name)return true;
+ let holder=null;for(const x of [el,...el.querySelectorAll('*')])if(norm(x.textContent)===name)holder=x;   // the innermost piece that shows exactly these words
+ if(!holder){if(!norm(el.textContent).includes(name))return false;holder=el}
+ for(let x=holder;x;x=x.parentElement){const cs=getComputedStyle(x);if(cs.display==='none'||cs.visibility==='hidden')return false;
+  if(x.scrollWidth>x.clientWidth+1&&cs.overflowX!=='visible')return false;if(x===el)break}
+ return true}
+function showTip(el){const d=tipData(el);if(!d||!document.contains(el)||saysNothing(el,d))return;if(!tip){tip=document.createElement('div');tip.id='qkTip';tip.setAttribute('role','tooltip');document.body.appendChild(tip)}
  tip.innerHTML=`<div class="n"><span>${esc(d.name)}</span>${d.key?`<kbd>${esc(d.key)}</kbd>`:''}</div>${d.desc?`<div class="d">${esc(d.desc)}</div>`:''}${d.hint?`<div class="h">${esc(d.hint)}</div>`:''}`;
  const r=el.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;let x,y;
  if(r.right>innerWidth-90&&r.width<120&&r.height<120&&r.top>60){x=r.left-w-8;y=r.top+(r.height-h)/2}                       // right-hand strip: to its left

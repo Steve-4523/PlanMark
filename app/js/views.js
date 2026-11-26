@@ -274,6 +274,12 @@ function activatePane(tid,slot){if(!P2.on)return;
   if(mv&&!P2.sync)p2ScrollTo(P,mv.p.num,mv.pt,v2.clientWidth/2,v2.clientHeight/2);else if(P2.sync)syncFromMain(true)};
  place();if(tool&&tool!==S.tool)try{setTool(tool)}catch(e){}
  requestAnimationFrame(()=>requestAnimationFrame(()=>{place();viewer.style.visibility='';v2.style.visibility='';p2RenderVisible();scheduleRender();updateCur&&updateCur();renderViewBtns();drawRulers()}))}
+// swap the two sides of a split (1.6.3): the panes change places on the screen. Nothing else moves: each keeps its tabs,
+// its spot on its sheet, its zoom and its size. With more than two panes, the pane `slot` changes places with its neighbour.
+function swapPanes(slot){if(!P2.on||!PN.tree||PN.tree.t!=='s')return false;if(slot==null||!PN.ids[slot])slot=PN.act;
+ const find=n=>{if(!n||n.t!=='s')return null;if((n.a.t==='l'&&n.a.s===slot)||(n.b.t==='l'&&n.b.s===slot))return n;return find(n.a)||find(n.b)};
+ const n=find(PN.tree)||PN.tree,a=n.a;n.a=n.b;n.b=a;n.r=1-n.r;if(n===PN.tree){V.splitRatio=n.r;saveV()}
+ layout();renderTabs();scheduleRender();p2RenderVisible();setTimeout(drawRulers,30);return true}
 // move a tab to another pane (`to` = slot; default: the other pane / the active one)
 function moveTab(id,to,from){if(!P2.on||!tabOf(id))return;
  if(from==null||!PN.ids[from]||!PN.ids[from].includes(id))from=PN.ids[PN.act].includes(id)&&to!==PN.act?PN.act:PN.ids.findIndex((L,s)=>s!==to&&L.includes(id));
@@ -464,5 +470,5 @@ function setupDom(){const main=$('#main'),vw=$('#viewer');const wrap=document.cr
  $('#mainPane').classList.toggle('ruled',!!V.rulers);document.body.classList.toggle('light',V.theme==='light');setDim(V.dim);renderTabs();renderNavBtns();renderViewBtns()}
 H.ready.push(setupDom);
 H.prefs.push(()=>{Object.assign(V,settings.view||{});document.body.classList.toggle('light',V.theme==='light');setDim(V.dim);$('#mainPane')&&$('#mainPane').classList.toggle('ruled',!!V.rulers);applyMode();renderViewBtns()});
-window.PMViews={get tabs(){return tabs},get curTab(){return curTab},switchTo:id=>{if(P2.on&&!PN.ids[PN.act].includes(id)&&PN.ids.some(L=>L.includes(id)))activatePane(id);else switchTo(tabOf(id))},closeTab,closeInPane,openSplit,closeSplit,activatePane,moveTab,paneOf,balance,toggleOrient,setSync,get act(){return PN.act},get panes(){return panesOn()},get slots(){return nSlots()},slotOfBar:el=>{if(!el)return PN.act;if(el.id==='tabBar')return PN.act;const P=pool.find(Q=>Q.bar===el);const s=P?slotOf(P):null;return s==null?PN.act:s},splitActive,removeSlot,get paneIds(){return PN.ids.map(x=>x.slice())},rotateView,setMode,flip,navBack,navFwd,setRulers,setDim,setTheme,zoomBoxMode,actualSize,zoomToSelection,setLoupe,P2,V,get rot(){return curRot},ptToPx,pxToPt};
+window.PMViews={get tabs(){return tabs},get curTab(){return curTab},switchTo:id=>{if(P2.on&&!PN.ids[PN.act].includes(id)&&PN.ids.some(L=>L.includes(id)))activatePane(id);else switchTo(tabOf(id))},closeTab,closeInPane,openSplit,closeSplit,activatePane,moveTab,swapPanes,paneOf,balance,toggleOrient,setSync,get act(){return PN.act},get panes(){return panesOn()},get slots(){return nSlots()},slotOfBar:el=>{if(!el)return PN.act;if(el.id==='tabBar')return PN.act;const P=pool.find(Q=>Q.bar===el);const s=P?slotOf(P):null;return s==null?PN.act:s},splitActive,removeSlot,get paneIds(){return PN.ids.map(x=>x.slice())},rotateView,setMode,flip,navBack,navFwd,setRulers,setDim,setTheme,zoomBoxMode,actualSize,zoomToSelection,setLoupe,P2,V,get rot(){return curRot},ptToPx,pxToPt};
 })();
