@@ -19,13 +19,14 @@ const pick=n=>sel.size>1&&sel.has(n)?[...sel].sort((a,b)=>a-b):[n];
 const rng=l=>l.length===1?'page '+l[0]:l.length+' pages';
 function delPages(l){modal(`Delete ${rng(l)}?`,'<div class="hint">Markups on '+(l.length>1?'these pages':'this page')+' are removed too.</div>',[{label:'Cancel',cancel:1},{label:'Delete',pri:1,fn:()=>{sel.clear();PMBatch.deletePages(l)}}])}
 function thumbMenu(x,y,n){const l=pick(n),W=PMWorkspace,D=window.PMDoc||{},go=f=>()=>{if(S.cur!==n)gotoPage(n,true);setTimeout(f,30)};
- W.ctx(x,y,[{label:'Go to page '+n,run:()=>gotoPage(n)},'-',
+ const fit=it=>{try{return(window.PMQuick&&PMQuick.menu&&PMQuick.menu('thumb',it,{n,pages:l}))||it}catch(e){return it}};
+ W.ctx(x,y,fit([{label:'Go to page '+n,run:()=>gotoPage(n)},'-',
   {label:'Insert pages…',run:()=>PMBatch.insertFrom(n)},{label:'Insert blank page…',run:go(()=>D.blankDialog())},{label:'Replace pages…',run:go(()=>D.replaceDialog())},
   {label:'Extract '+rng(l),run:()=>PMBatch.extract(l)},{label:'Delete '+rng(l)+'…',run:()=>delPages(l)},'-',
   {label:'Rotate ↻',run:()=>{sel.clear();PMBatch.rotatePages(l,90)}},{label:'Rotate ↺',run:()=>{sel.clear();PMBatch.rotatePages(l,-90)}},
   {label:'Move up',dis:n<=1||l.length>1,run:()=>W.movePageTo(n,n-1)},{label:'Move down',dis:n>=S.pages.length||l.length>1,run:()=>W.movePageTo(n,n+1)},{label:'Move to…',dis:l.length>1,run:()=>modalPrompt('Move page '+n,'New position (1–'+S.pages.length+')',String(n),v=>W.movePageTo(n,clamp(parseInt(v)||n,1,S.pages.length)))},'-',
   {label:'Crop pages…',run:go(()=>D.cropDialog())},{label:'Page labels…',run:()=>D.labelsDialog()},{label:'Headers, footers & Bates…',run:()=>D.hfDialog()},'-',
-  {label:'Add bookmark',run:()=>{gotoPage(n,true);addBookmark()}},{label:'Select all pages',run:()=>{sel.clear();S.pages.forEach(p=>sel.add(p.num));paint()}}])}
+  {label:'Add bookmark',run:()=>{gotoPage(n,true);addBookmark()}},{label:'Select all pages',run:()=>{sel.clear();S.pages.forEach(p=>sel.add(p.num));paint()}}]))}
 window.PMQA5=Object.assign(window.PMQA5||{},{thumbMenu,selPages:()=>[...sel]});
 H.open.push(()=>{sel.clear();anchor=0});
 })();

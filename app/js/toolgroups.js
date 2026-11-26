@@ -43,8 +43,9 @@ body.dl.tg #ribbon .tb.tgFam:hover::after{border-color:transparent transparent v
 
 const rb=()=>$('#ribbon');
 const btn=t=>rb()&&rb().querySelector(`:scope>.grp:not(.rvNavGrp) .tb[data-tool="${t}"]`);   // (the Revu nav group keeps hidden copies of some tools)
-const keyOf=b=>{const m=/\(([^)]+)\)/.exec(b.title||'');return m?m[1]:''};
-const nameOf=b=>(b.querySelector('span')||{}).textContent||b.title||'';
+const ttl=b=>b?(b.dataset.qt!=null?b.dataset.qt:(b.title||'')):'';   // (hover help holds the title while the mouse is on a button)
+const keyOf=b=>{const m=/\(([^)]+)\)/.exec(ttl(b));return m?m[1]:''};
+const nameOf=b=>(b.querySelector('span')||{}).textContent||ttl(b)||'';
 
 /* show one button per family (the one last picked, or the tool in use), hide the rest */
 function apply(){const r=rb();if(!r)return;const on0=isDL()&&r.dataset.rv==='1';document.body.classList.toggle('tg',on0);if(!on0)return;   // after the Bluebeam layout has put the strip in order
@@ -56,11 +57,11 @@ function apply(){const r=rb();if(!r)return;const on0=isDL()&&r.dataset.rv==='1';
   let slot=r.querySelector(`.tgSlot[data-f="${id}"]`);if(!slot){slot=document.createElement('i');slot.className='tgSlot';slot.dataset.f=id;slot.hidden=true;btn(live[0]).before(slot)}
   const fb=btn(f);if(fb&&slot.nextElementSibling!==fb)slot.after(fb);
   for(const t of live){const b=btn(t);if(!b)continue;b.classList.toggle('tgOff',t!==f);b.classList.toggle('tgFam',t===f&&live.length>1);b.classList.toggle('tgOut',hiddenFam.has(id)&&!(cur&&live.includes(cur)));   // a hidden kind still shows while its tool is in use (picked by key or Find a command)
-   if(t===f&&live.length>1&&!b.dataset.tgT){b.dataset.tgT=1;b.title=b.title.replace(/ — double-click to lock$/,'')+' — double-click to lock · right-click or hold for more '+FAM.find(x=>x[0]===id)[1].toLowerCase()+' tools'}}}
+   if(t===f&&live.length>1&&!b.dataset.tgT&&b.dataset.qt==null){b.dataset.tgT=1;b.title=b.title.replace(/ — double-click to lock$/,'')+' — double-click to lock · right-click or hold for more '+FAM.find(x=>x[0]===id)[1].toLowerCase()+' tools'}}}
  // the Document buttons (Print, Compare, Overlay, OCR…) become one “More” button
  const docs=[...r.querySelectorAll('.tb[data-rib]')];
  if(docs.length){let more=r.querySelector('#tgMore');const g=docs[0].parentElement;
-  if(!more){more=document.createElement('button');more.className='btn tb tgFam';more.id='tgMore';more.title='More: print, compare, overlay, OCR, forms, signatures and other document tools';
+  if(!more){more=document.createElement('button');more.className='btn tb tgFam';more.id='tgMore';more.title='More';
    more.innerHTML='<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>More</span>';g.appendChild(more)}
   for(const d of docs)d.classList.add('tgOff')}
  // separators only between families that are showing
@@ -79,8 +80,8 @@ function flyKey(e){if(!fly)return;const rows=[...fly.querySelectorAll('.r')];
  else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();e.stopPropagation();sel=(sel+(e.key==='ArrowDown'?1:-1)+rows.length)%rows.length;rows.forEach((r,i)=>r.classList.toggle('k',i===sel))}
  else if(e.key==='Enter'&&sel>=0){e.preventDefault();e.stopPropagation();rows[sel].click()}}
 function openFly(anchor){closeFly();const r=rb();let rows=[],title='';
- if(anchor.id==='tgMore'){title='More tools';const onClaude=!!(window.claude&&window.claude.use);rows=[...r.querySelectorAll('.tb[data-rib]')].filter(b=>!(hiddenRib&&hiddenRib.has(nameOf(b)))&&(onClaude||!/Live shared markup sessions/.test(b.title))).map(b=>({b,name:nameOf(b),hint:b.title,key:''}))}
- else{const f=famOf(anchor.dataset.tool);if(!f)return;title=f[1];rows=f[2].map(btn).filter(Boolean).map(b=>({b,name:nameOf(b),key:keyOf(b),tool:b.dataset.tool}))}
+ if(anchor.id==='tgMore'){title='More tools';const onClaude=!!(window.claude&&window.claude.use);rows=[...r.querySelectorAll('.tb[data-rib]')].filter(b=>!(hiddenRib&&hiddenRib.has(nameOf(b)))&&(onClaude||!/Live shared markup sessions/.test(b.title))).map(b=>({b,name:nameOf(b),hint:ttl(b),key:''}))}
+ else{const f=famOf(anchor.dataset.tool);if(!f)return;title=f[1];rows=f[2].map(btn).filter(Boolean).map(b=>({b,name:nameOf(b),key:keyOf(b),tool:b.dataset.tool,hint:(window.PMQuick&&PMQuick.TOOL[b.dataset.tool])||''}))}
  if(rows.length<2&&anchor.id!=='tgMore')return;
  fly=document.createElement('div');fly.id='tgFly';flyFor=anchor;sel=-1;
  const cur=(r.querySelector(':scope>.grp:not(.rvNavGrp) .tb.on[data-tool]')||{}).dataset;

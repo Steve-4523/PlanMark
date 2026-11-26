@@ -149,7 +149,7 @@ function build(){
  const cl=document.createElement('button');cl.className='btn';cl.id='dlClassic';cl.title='Switch to the classic toolbar layout';cl.textContent='Classic layout';cl.style.cssText='font-size:12px;color:var(--mut)';
  cl.onclick=()=>setOn(false);$('#bSettings').before(cl);
  // the page box reads "5 (5 of 14)" and accepts a page number or label
- const pi=$('#pageIn');pi.addEventListener('focus',()=>{pi.value=S.cur||''; setTimeout(()=>pi.select(),0)});
+ const pi=$('#pageIn');pi.addEventListener('focus',()=>{pi.value=S.cur||''; setTimeout(()=>{if(document.activeElement===pi)pi.select()},0)});   // (select() on a box that was already left would pull the cursor back into it)
  // left: wrap panes, decorate tabs
  const left=$('#left'),tabs=left.querySelector('.tabs');const wrap=document.createElement('div');wrap.id='dlPanes';
  const head=document.createElement('div');head.id='dlPHead';head.innerHTML='<span id="dlPName">Thumbnails</span><span class="car">▼</span>';

@@ -84,6 +84,8 @@ document.addEventListener('dblclick',e=>{if(S.tool!=='select'||ED||!S.pages.leng
  const m=hitAt(e.clientX,e.clientY);if(!m||m.lock||m.locked)return;
  if(INPLACE.has(m.type)){e.preventDefault();e.stopPropagation();setSel([m.id],true);start(m,false)}
  else if(m.type==='note'||m.type==='flag'){e.preventDefault();e.stopPropagation();setSel([m.id],true);_td(m,false,'comment')}});
+// the right-click menu's "Edit text" does what a double-click does
+window.PMInlineText={types:INPLACE,edit(m){if(!m||m.lock||m.locked)return false;if(S.tool!=='select')setTool('select');setSel([m.id],true);if(INPLACE.has(m.type)){start(m,false);return true}if(m.type==='note'||m.type==='flag'){_td(m,false,'comment');return true}return false}};
 
 // 3. Esc closes dialogs even when focus is outside the dialog
 document.addEventListener('keydown',e=>{if(e.key!=='Escape'||!modalCb||!$('#modalBg').classList.contains('on'))return;if($('#modal').contains(e.target))return;

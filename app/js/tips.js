@@ -44,6 +44,10 @@ const TIPS=[
  ['Snapshot','Snapshot (G) copies part of a sheet so you can paste it onto another page.'],
  ['Save','Ctrl+S saves the same file with markups still editable. Ctrl+Shift+M saves a flattened copy to send out.'],
  ['Undo anything','Ctrl+Z undoes and Ctrl+Y redoes. Alt+H shows the full undo history.'],
+ ['Draw another one','Tap Space to bring back the tool you just used. Holding Space still pans.'],
+ ['Right-click anything','Right-click a markup, a blank spot on the sheet, a thumbnail or a tab. Each menu shows what fits: copy a measurement, draw another like it, zoom, set the scale.'],
+ ['What does this button do?','Rest the mouse on any button to see its name, its shortcut key and what it does.'],
+ ['Add up a few measurements','Select several areas or lengths, then right-click one of them: the top of the menu shows the total, and Copy the total puts it on the clipboard.'],
  ['All the shortcuts','Help > Keyboard shortcuts lists every key. PlanMark > Keyboard shortcuts lets you change them.'],
 ];
 const LSK='pm:tips',NK='pm:tipN';

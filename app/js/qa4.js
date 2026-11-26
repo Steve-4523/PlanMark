@@ -23,6 +23,7 @@ $('#mlBody').addEventListener('click',e=>{if(e.shiftKey||e.ctrlKey||e.metaKey||e
  const o=openRect(),pr=S.pages[m.page-1]&&S.pages[m.page-1].el.getBoundingClientRect(),b=bboxOf(m);if(pr&&m.page===S.cur){const L=pr.left+b[0]*S.zoom,R=pr.left+b[2]*S.zoom,T=pr.top+b[1]*S.zoom,B=pr.top+b[3]*S.zoom;
   if(L>=o.left&&R<=o.right&&T>=o.top&&B<=o.bottom&&Math.max(R-L,B-T)>=40){viewer.scrollTo({left:viewer.scrollLeft,top:viewer.scrollTop,behavior:'instant'});return}}/* already in full view: just select */
  viewer.scrollTo({left:viewer.scrollLeft,top:viewer.scrollTop,behavior:'instant'});zoomToMarkup(m)});
+window.PMZoomTo=zoomToMarkup;   // "Show on the sheet" in the Markups list's right-click menu
 /* 2b. The floating Properties panel must not hide the markup it is editing: slide the drawing left. */
 let btnDown=false;window.addEventListener('pointerdown',()=>{btnDown=true},true);window.addEventListener('pointerup',()=>{btnDown=false;if(needPeek)setTimeout(peek,0)},true);
 let needPeek=false;
