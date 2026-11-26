@@ -1,8 +1,8 @@
 {
  "app": "PlanMark",
- "version": "1.6.0",
+ "version": "1.6.1",
  "minShell": "1.0.0",
- "notes": "Faster everyday use. Tap Space to bring back the tool you just used (holding Space still pans). Right-click menus now fit what you clicked: a measurement shows its value with Copy, Draw another and its scale; several measurements show their total; text has Edit text; a blank spot offers your last tools, zoom and the scale read from the sheet. Rest the mouse on any button to see its name, its key and what it does.",
+ "notes": "Fix: forms you fill in PlanMark now show their text correctly in Bluebeam and other PDF programs. Before, the typed words could show up there as Greek-looking symbols. If a form you already saved looks wrong in Bluebeam, open it in PlanMark and save it again.",
  "files": {
   "index.html": "37718e56acb4a477ab525ecd4de6a7a5fcbb9da567976a2dfb241cc18a0d9711",
   "config.json": "ae2ca167ff35af4879d7a5e12308ea3e121e77a047e3e73b07ea208d4ce7dac7",
@@ -23,7 +23,7 @@
   "js/drafting.js": "280ba8326cf26c5d45725e4381a594c844dbd871b6dc808ea8d5464558c57e86",
   "js/easy.js": "b5ebac155cffcfcd1650291f13fd268d7fe668395b8ff90834280119ff33eb4d",
   "js/editpts.js": "d5ffdc80af194dba0596bf55947e8abcb0f56a1a20e195564867888cb8c294d1",
-  "js/forms3.js": "4802e7a6913e203b2b339a0b13dde3cd3dc1b8bc98d08ace2d3e23032e211231",
+  "js/forms3.js": "178abfe509e927f0672160495e7d8ada4c4833d91f5996ab5a8adfa8f649fd2d",
   "js/i18n-es.js": "7c10e81f1865e7dc2dc6b52bde82c303ba04ef275f865676356482e11fa22327",
   "js/layers.js": "08c07accd9302b32ad21d1336f762a119a04f1eca155e1ef441081e9055a2a4c",
   "js/light.js": "ebcecf2612d4d530698cd9c64ad4d577a0e9ecdf03d479416799693e657dff43",

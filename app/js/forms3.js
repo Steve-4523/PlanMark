@@ -579,20 +579,31 @@ H.exportPage.push(async(doc,pages,font)=>{const F=S.scales.forms;const hasDoc=(F
  if(!F||(!Object.keys(F.values||{}).length&&!(F.created||[]).length&&!F.flatten&&!Object.keys(F.props||{}).length&&!Object.keys(F.hidden||{}).length&&!F.order.length&&!hasDoc&&!F.calcOrder))return;
  const L=PDFLib,form=doc.getForm(),ctx=doc.context,N=n=>L.PDFName.of(n),HS=t=>L.PDFHexString.fromText(String(t));
  const jsA=code=>ctx.obj({S:'JavaScript',JS:HS(code)});const done=new Set(),post=[];
+ // Fields stay live in the saved file, so they are written with the standard Helvetica that every PDF app has,
+ // and not with the embedded drafting font from "Embed fonts": other apps redraw fields
+ // themselves and cannot type with an embedded subset font (Bluebeam showed the typed text in Symbol, 1.6.0).
+ // Only a flattened form (its text becomes part of the page, nobody redraws it) and a PDF/A archive (every font must be
+ // inside the file) keep the embedded font. "Flatten markups" alone leaves the fields live, so it counts as live.
+ const D3_=window.PMDocs3&&PMDocs3.D3,live=!(F.flatten||(D3_&&D3_.forceFonts));
+ const FF=window.PMFormFonts||{},docFont=font;let helv=null;if(live&&!FF.off){try{helv=doc.embedStandardFont(L.StandardFonts.Helvetica)}catch(e){console.warn(e)}}
+ const okH=t=>{if(!helv)return false;try{helv.encodeText(String(t==null?'':t));return true}catch(e){return false}};
+ const fontFor=t=>okH(t)?helv:docFont;   // text with letters Helvetica lacks (Greek, drafting symbols) keeps the document font
+ font=helv||docFont;
  const getF=name=>{try{return form.getFieldMaybe?form.getFieldMaybe(name):form.getField(name)}catch(e){return null}};
  // 1) create PlanMark fields
  for(const[name,cs]of createdGroups()){const c=cs[0],v=(F.values||{})[name],p=propsOf(Object.assign({},c,{widgets:[]}));
   const geo=x=>{const vp=S.pages[x.page-1]&&S.pages[x.page-1].vp;if(!pages[x.page-1]||!vp)return null;const q=[vp.convertToPdfPoint(x.box[0],x.box[1]),vp.convertToPdfPoint(x.box[2],x.box[3])];return{page:pages[x.page-1],x:Math.min(q[0][0],q[1][0]),y:Math.min(q[0][1],q[1][1]),width:Math.abs(q[1][0]-q[0][0]),height:Math.abs(q[1][1]-q[0][1])}};
   try{if(c.kind==='checkbox'){const g=geo(c);if(!g)continue;const cb=form.createCheckBox(name);cb.addToPage(g.page,{x:g.x,y:g.y,width:g.width,height:g.height});if(v)cb.check()}
    else if(c.kind==='radio'){const rg=form.createRadioGroup(name);for(const x of cs){const g=geo(x);if(!g)continue;rg.addOptionToPage(x.exportValue||'Choice',g.page,{x:g.x,y:g.y,width:g.width,height:g.height})}if(v)try{rg.select(String(v))}catch(e){}}
-   else if(c.kind==='dropdown'){const g=geo(c);if(!g)continue;const dd=form.createDropdown(name);dd.addOptions(c.options&&c.options.length?c.options:[' ']);dd.addToPage(g.page,{x:g.x,y:g.y,width:g.width,height:g.height,font});if(v)try{dd.select(String(v))}catch(e){}}
-   else if(c.kind==='list'){const g=geo(c);if(!g)continue;const ol=form.createOptionList(name);ol.addOptions(c.options&&c.options.length?c.options:[' ']);ol.addToPage(g.page,{x:g.x,y:g.y,width:g.width,height:g.height,font});if(v)try{ol.select(String(v))}catch(e){}}
+   else if(c.kind==='dropdown'){const g=geo(c);if(!g)continue;const dd=form.createDropdown(name);dd.addOptions(c.options&&c.options.length?c.options:[' ']);dd.addToPage(g.page,{x:g.x,y:g.y,width:g.width,height:g.height,font:fontFor((c.options||[]).join(' '))});if(v)try{dd.select(String(v))}catch(e){}}
+   else if(c.kind==='list'){const g=geo(c);if(!g)continue;const ol=form.createOptionList(name);ol.addOptions(c.options&&c.options.length?c.options:[' ']);ol.addToPage(g.page,{x:g.x,y:g.y,width:g.width,height:g.height,font:fontFor((c.options||[]).join(' '))});if(v)try{ol.select(String(v))}catch(e){}}
    else if(c.kind==='signature'){const g=geo(c);if(!g)continue;const ref=ctx.register(ctx.obj({Type:'Annot',Subtype:'Widget',FT:'Sig',T:L.PDFString.of(name),Rect:[g.x,g.y,g.x+g.width,g.y+g.height],F:4,P:g.page.ref,MK:ctx.obj({BC:[0,0,.6]})}));g.page.node.addAnnot(ref);form.acroForm.addField(ref)}
-   else if(c.kind==='button'){const g=geo(c);if(!g)continue;const b=form.createButton(name);b.addToPage(p.caption||c.caption||name,g.page,{x:g.x,y:g.y,width:g.width,height:g.height,font,backgroundColor:L.rgb(.9,.91,.92),borderColor:L.rgb(.45,.47,.5),borderWidth:1})}
+   else if(c.kind==='button'){const g=geo(c);if(!g)continue;const b=form.createButton(name);b.addToPage(p.caption||c.caption||name,g.page,{x:g.x,y:g.y,width:g.width,height:g.height,font:fontFor(p.caption||c.caption||name),backgroundColor:L.rgb(.9,.91,.92),borderColor:L.rgb(.45,.47,.5),borderWidth:1})}
    else{const g=geo(c);if(!g)continue;const tf=form.createTextField(name);if(c.multiline||p.multiline)tf.enableMultiline();tf.addToPage(g.page,{x:g.x,y:g.y,width:g.width,height:g.height,font})}}catch(e){console.warn('create field',name,e)}}
  // 2) values, properties, formats, calculations and actions for every field
- const coRefs=[];
+ const coRefs=[],untouched=new Set();   // text fields left empty, as they were: their font, size and picture stay as the author made them
  for(const x of allFieldsRaw()){const name=x.f.name,fld=getF(name);if(!fld)continue;const p=propsOf(x.f),v=valOf(x.f),d=fld.acroField.dict;
+  if(live&&!x.created&&fld instanceof L.PDFTextField&&(v==null||v==='')&&(x.f.value==null||x.f.value==='')&&!(F.props||{})[name])untouched.add(name);
   try{if(fld instanceof L.PDFTextField){if(p.multiline)fld.enableMultiline();if(p.maxLen)try{fld.setMaxLength(p.maxLen)}catch(e){}else if(x.created)try{fld.removeMaxLength()}catch(e){}
     try{fld.setAlignment({left:L.TextAlignment.Left,center:L.TextAlignment.Center,right:L.TextAlignment.Right}[p.align]||L.TextAlignment.Left)}catch(e){}
     if(p.fontSize)try{fld.setFontSize(p.fontSize)}catch(e){}
@@ -622,7 +633,10 @@ H.exportPage.push(async(doc,pages,font)=>{const F=S.scales.forms;const hasDoc=(F
  // document JavaScript
  if(F.docJS){try{const cat=doc.catalog;let names=cat.lookup(N('Names'));if(!(names instanceof L.PDFDict)){names=ctx.obj({});cat.set(N('Names'),names)}
   const arr=[];for(const s of F.docJS){arr.push(HS(s.name||'Script'));arr.push(ctx.register(jsA(s.code||'')))}names.set(N('JavaScript'),ctx.obj({Names:ctx.obj(arr)}))}catch(e){console.warn('doc js',e)}}
- try{form.updateFieldAppearances(font)}catch(e){}
+ // each field on its own: one whose text Helvetica cannot write falls back to the document font instead of stopping the rest
+ if(FF.off)try{form.updateFieldAppearances(font)}catch(e){}
+ else{for(const f of form.getFields()){if(untouched.has(f.getName())){try{f.markAsClean()}catch(e){}continue}try{if(f.needsAppearancesUpdate())f.defaultUpdateAppearances(font)}catch(e){try{f.defaultUpdateAppearances(docFont)}catch(e2){console.warn('field appearance',f.getName(),e2)}}}
+  try{FF.sync&&FF.sync(form)}catch(e){}}
  for(const f of post)try{f()}catch(e){}
  if(F.flatten)try{form.flatten()}catch(e){console.warn('flatten',e)}});
 
@@ -706,7 +720,7 @@ async function runSteps(steps,file,pg,st){let files=[file];const saved=[];
  return[...saved,...files]}
 const progressStub=()=>({cancelled:false,msg(){},bar(){},log(){},done(){}});
 async function fillBytes(bytes,pairs){const d=await PDFLib.PDFDocument.load(bytes,{ignoreEncryption:true});const form=d.getForm();for(const[n,v]of pairs){try{const f=form.getField(n);if(f instanceof PDFLib.PDFTextField)f.setText(v);else if(f instanceof PDFLib.PDFCheckBox)(v&&v!=='Off'&&v!=='0'?f.check():f.uncheck());else if(f.select)f.select(v)}catch(e){}}
- try{form.updateFieldAppearances(await d.embedFont(PDFLib.StandardFonts.Helvetica))}catch(e){}return d.save()}
+ try{form.updateFieldAppearances(d.embedStandardFont(PDFLib.StandardFonts.Helvetica))}catch(e){}return d.save()}
 // the open document with its markups burned in (the editable copy carries PlanMark's embedded original, which would reopen instead of the result)
 async function currentFile(){const r=await captureExport(true);return r?{name:S.fileName||'document.pdf',bytes:r.bytes}:{name:S.fileName,bytes:S.bytes}}
 async function runScriptOnCurrent(sc){if(!S.bytes)return toast('Open a PDF first');if(!sc.steps.length)return toast('This script has no steps');const pg=progress('Script: '+sc.name);let out=[];
@@ -816,4 +830,38 @@ window.PMForms={FM,FS,JSI,loadFields,allFields,allFieldsRaw,fieldByName,propsOf,
  makeData,parseFDF,parseXFDF,parseXML,applyPairs,exportData,importData,exportMany,mergeRows,migrateTyped,resetForm,runAction,jsConsole,docJSDialog,runFieldJS,
  sfnParse,sfnToJS,afCalc,afFormat,calcOrderDialog,prefsDialog,scriptManager,scriptEditor,runScriptOnCurrent,runScriptBatch,runSteps,startRecording,captureExport,valuesOfPdf,
  get formShow(){return formShow},set formShow(v){formShow=v},get fmode(){return fmode},set fmode(v){fmode=v;renderForms()}};
+})();
+
+/* =====================================================================================
+   Form text readable in every PDF app (1.6.1)
+   pdf-lib draws a filled field with its own copy of Helvetica and writes that font's name into the field's
+   "default appearance" (/DA), but never lists the font in the form's default resources (/DR). Apps that redraw
+   fields themselves from /DA (Bluebeam does; Acrobat does once you click into a field) then cannot find the font
+   and substitute one — Bluebeam substitutes Symbol, so the typed text shows as Greek letters. The PDF rule is that
+   the /DA font must be a /DR font, so after every appearance update each field's /DA font is added to /DR. It is
+   done on pdf-lib's own method, so every way PlanMark writes fields (Save, batch fill, flatten) is covered.
+   ===================================================================================== */
+(function(){const L=window.PDFLib;if(!L||!L.PDFForm)return;const N=n=>L.PDFName.of(n);
+ const fontOfDA=da=>{const m=da&&/\/([^\s\/\[\]()<>{}%]+)\s+-?[\d.]+\s+Tf/.exec(String(da));return m?m[1]:null};
+ function sync(form){let added=0;try{const af=form.acroForm.dict,ctx=form.doc.context;
+   let dr=af.lookup(N('DR'));if(!(dr instanceof L.PDFDict)){dr=ctx.obj({});af.set(N('DR'),dr)}
+   let fonts=dr.lookup(N('Font'));if(!(fonts instanceof L.PDFDict)){fonts=ctx.obj({});dr.set(N('Font'),fonts)}
+   for(const f of form.getFields()){const ws=f.acroField.getWidgets();
+    for(const h of [f.acroField,...ws]){const name=fontOfDA(h.getDefaultAppearance&&h.getDefaultAppearance());if(!name||fonts.has(N(name)))continue;
+     // the font this field was drawn with is in its appearance stream's own resources
+     let ref=null;for(const w of ws){try{const ap=w.dict.lookup(N('AP')),n=ap instanceof L.PDFDict?ap.lookup(N('N')):null,res=n&&n.dict?n.dict.lookup(N('Resources')):null,
+       fd=res instanceof L.PDFDict?res.lookup(N('Font')):null,r=fd instanceof L.PDFDict?fd.get(N(name)):null;if(r){ref=r;break}}catch(e){}}
+     if(ref){fonts.set(N(name),ref);added++}}}}catch(e){console.warn('form fonts',e)}return added}
+ // An empty text field with no picture yet is left exactly as its author made it (font, automatic size):
+ // pdf-lib would otherwise give it a fixed size and its own font just because it has no picture yet.
+ const hasPic=f=>f.acroField.getWidgets().some(w=>{try{const ap=w.dict.lookup(N('AP'));return ap instanceof L.PDFDict&&!!ap.lookup(N('N'))}catch(e){return false}});
+ const leave=f=>{try{return f instanceof L.PDFTextField&&!(f.getText()||'')&&!hasPic(f)}catch(e){return false}};
+ const orig=L.PDFForm.prototype.updateFieldAppearances;
+ const origFlat=L.PDFForm.prototype.flatten;
+ L.PDFForm.prototype.flatten=function(){this._pmFlat=true;try{return origFlat.apply(this,arguments)}finally{this._pmFlat=false}};   // flattening needs a picture for every field
+ L.PDFForm.prototype.updateFieldAppearances=function(font){if(window.PMFormFonts.off||this._pmFlat)return orig.apply(this,arguments);
+  let def=font||null;const std=()=>def||(def=this.doc.embedStandardFont(L.StandardFonts.Helvetica));   // no font given (save, flatten): plain Helvetica
+  for(const f of this.getFields()){if(leave(f))continue;try{if(f.needsAppearancesUpdate())f.defaultUpdateAppearances(std())}catch(e){console.warn('field appearance',e)}}
+  sync(this)};
+ window.PMFormFonts={sync,fontOfDA,leave,off:false};
 })();
