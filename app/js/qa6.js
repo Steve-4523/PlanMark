@@ -76,7 +76,8 @@ addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||e.shiftKey||e.altKey|
  if(!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable]'))||t.closest('#modal'))return;e.preventDefault();e.stopImmediatePropagation();
  try{t.blur()}catch(err){}setTimeout(()=>{if(S.bytes)exportPDF(false)},60)},true);
 // File ▸ Save As… right under Save (the command list is built a moment after start-up, and again if rebuilt)
-function addCmd(){try{const W=window.PMWorkspace,C=W&&W.CMDS;if(!C||!C.length||C.some(c=>c.id==='saveas'))return;const i=C.findIndex(c=>c.id==='save');
+function addCmd(){try{const W=window.PMWorkspace,C=W&&W.CMDS;if(!C||!C.length)return;const web=C.find(c=>c.id==='qa5:saveas');if(web&&!web.hidden)web.hidden=true;   // the website's Save As (a download) would show as a second "Save As…" under this one
+ if(C.some(c=>c.id==='saveas'))return;const i=C.findIndex(c=>c.id==='save');
  C.splice(i<0?C.length:i+1,0,{id:'saveas',menu:'File',label:'Save As…',key:'Ctrl+Shift+S',run:()=>{if(S.bytes)save(true)}})}catch(e){}}
 H.ready.push(()=>{addCmd();setInterval(addCmd,1000)});
 

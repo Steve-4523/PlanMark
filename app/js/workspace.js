@@ -4,7 +4,7 @@
    spell check, auto-complete, status keys, Bluebeam-style keyboard shortcuts. */
 (function(){
 const WS_VER='1.4.0';   // the version the "What's new" list was last written for (not the app's version)
-const APP_VER='1.6.4';  // the app's version, written in by the release script: the website's About box showed WS_VER, so it said 1.4.0 for ever
+const APP_VER='1.6.5';  // the app's version, written in by the release script: the website's About box showed WS_VER, so it said 1.4.0 for ever
 const DEF_P={menu:true,crosshair:false,docDark:false,viewMode:false,rememberPos:true,reopenLast:false,showFiles:false,defLayout:'',lockFitWidth:false,
  reverseWheel:false,wheelSens:1,maxZoom:64,snapSens:9,snapColor:'#ff00ff',autoSize:true,popups:true,popOpacity:.95,thumbSize:150,thumbMarkups:true,thumbView:true,
  noLineWeights:false,replyBadges:true,shortcutSet:'bluebeam',statusKeys:{1:'Open',2:'In Progress',3:'Completed',4:'Accepted',5:'Rejected',6:'Field Verify'},
@@ -412,6 +412,12 @@ function menuItems(name){const cs=CMDS.filter(c=>!c.hidden&&(!c.when||c.when()))
  if(name==='Window'){const vw=V(),tabs=vw.tabs||[];return[...tabs.map(t=>({label:(t.id===vw.curTab?'● ':'')+(t.name||'Untitled'),run:()=>vw.switchTo(t.id)})),tabs.length?'-':null,{label:'Split vertically',key:'Ctrl+2',run:()=>vw.openSplit&&vw.openSplit('v')},{label:'Split horizontally',key:'Ctrl+3',run:()=>vw.openSplit&&vw.openSplit('h')},{label:'Close split',run:()=>vw.closeSplit&&vw.closeSplit(),dis:!(vw.P2&&vw.P2.on)},{label:'Toggle split orientation',key:'Ctrl+I',run:()=>vw.toggleOrient&&vw.toggleOrient(),dis:!(vw.P2&&vw.P2.on)},{label:'Balance panes',key:'Shift+F12',run:()=>vw.balance&&vw.balance(),dis:!(vw.P2&&vw.P2.on)},{label:'Synchronize',check:!!(vw.P2&&vw.P2.sync),run:()=>vw.setSync&&vw.setSync(),dis:!(vw.P2&&vw.P2.on)},'-',
   {label:'New window',run:()=>window.pmDesktop&&pmDesktop.newWindow?pmDesktop.newWindow(null):toast('New windows are available in the Windows app'),dis:!(window.pmDesktop&&pmDesktop.newWindow)},{label:'Close tab',key:'Ctrl+W',run:()=>vw.closeTab&&vw.closeTab(vw.curTab),dis:!tabs.length},{label:'Close all tabs',run:()=>tabs.map(t=>t.id).forEach(id=>vw.closeTab(id)),dis:!tabs.length}].filter(Boolean)}
  if(name==='Edit'){const e2=grp('Edit');return[...e2.slice(0,10),'-',{label:'Arrange & align',sub:e2.filter(x=>/^(Align|Make same|Center|Bring|Send)/.test(x.label))},...e2.slice(10).filter(x=>!/^(Align|Make same|Center|Bring|Send)/.test(x.label))]}
+ if(name==='File'){// Open Recent, right under Open: the files opened lately on this computer, newest first (the same list as the start screen)
+  const f=grp('File'),i=f.findIndex(x=>/^Open\b/.test(x.label)),ago=t=>{const m=Math.max(0,(Date.now()-t)/60000);return m<1?'just now':m<60?Math.round(m)+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'};
+  let rec=[];try{rec=(LS.get('pm:recentIdx',[])||[]).slice().sort((a,b)=>b.at-a.at).slice(0,12)}catch(e){}
+  const short=n=>n.length>64?n.slice(0,40)+'…'+n.slice(-20):n;
+  const sub=rec.length?rec.map(r=>({label:short(r.name||'Untitled'),key:ago(r.at),run:()=>window.PMEasy&&PMEasy.openRecent?PMEasy.openRecent(r.key):PMRecent.get(r.key).then(q=>q&&openBytes(new Uint8Array(q.bytes),q.name))})):[{label:'No recent files yet',dis:true}];
+  f.splice(i<0?0:i+1,0,{label:'Open Recent',sub});return f}
  return grp(name)}
 function buildMenu(){let bar=$('#wsMenu');if(!bar){bar=document.createElement('div');bar.id='wsMenu';$('#app').insertBefore(bar,$('#topbar'))}
  bar.innerHTML=MENUS.map(n=>`<div class="wm" data-m="${n}">${n}</div>`).join('');bar.style.display=P.menu?'':'none';

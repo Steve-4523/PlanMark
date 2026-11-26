@@ -1,8 +1,8 @@
 {
  "app": "PlanMark",
- "version": "1.6.4",
+ "version": "1.6.5",
  "minShell": "1.0.0",
- "notes": "Split view: the blue box around the pane you are working in is gone. The pane is now shown by its tab only (blue line and bold name).",
+ "notes": "File menu: Open Recent, right under Open, lists the files you opened lately. The second Save As is gone.",
  "files": {
   "index.html": "37718e56acb4a477ab525ecd4de6a7a5fcbb9da567976a2dfb241cc18a0d9711",
   "config.json": "ae2ca167ff35af4879d7a5e12308ea3e121e77a047e3e73b07ea208d4ce7dac7",
@@ -43,7 +43,7 @@
   "js/qa3.js": "54f31a0962eef42976869398cf547712a4ba6034f12d2312f9b8f9105e41f2b9",
   "js/qa4.js": "f307452df272eef75519527aba83f2ea7ffa1461e9c28d3f71452ba133860032",
   "js/qa5.js": "7b08258303cadb1fe16487b2ec009172389de81a37f67a57bbed795ae82ea633",
-  "js/qa6.js": "0cbdb5f2a66b7208a6faa1871c6bd5cbf3427c3c9e48c7574ccb5b55189d554d",
+  "js/qa6.js": "a471a9cfdf30b21508915802a46f8f194b11f81bea303125745ae211b9f40d4b",
   "js/quick.js": "e14215ca9a4584a81dc12e80d526bde1d5d2ff5dbec24d47e3fcc463bccbf713",
   "js/revit.js": "c233a1756903467dad52ff123eb9be22fd47263556338dc74ff87beeb54c13c6",
   "js/revu.js": "43814ecaf70070a2192d3fe795cea93e9695d3af1a440912fcc130da1489fb63",
@@ -61,7 +61,7 @@
   "js/toolbox.js": "2d091caf68e198ff44e5cb1e9dad251845edea9b9e3623ceddc12c1992a548e9",
   "js/toolgroups.js": "71e74117e07780800485b56eeeed752f4eb5d120116ce4f3987db70bf82aafdc",
   "js/views.js": "31a323beba2dc9b1a61cd2fbc5000e9e291a51b527b2c638873a6bd44977e301",
-  "js/workspace.js": "95807243328e5158d7dc290fa2c5a2ff55356b3970062393667004494914fbdb",
+  "js/workspace.js": "c6bb5bff2c16cac2b936e50e540a5f574c1e46f978c66660e9a7074212175db8",
   "img/icon-180.png": "2ed8b8fa65c3d9a44f30adcd39df1ebc3dd673d846d5fbadaf3e43e7a8db82ee",
   "img/icon-32.png": "0b42f6ee2ff38a3ec6eb32d837dd32da7e5d1c2e41f41b9da335de76d27333d4",
   "img/icon-512.png": "27800ebf7351b902204050570406f8c838e5ff9d410514014cb04ca170365fd9"
