@@ -1,8 +1,8 @@
 {
  "app": "PlanMark",
- "version": "1.6.3",
+ "version": "1.6.4",
  "minShell": "1.0.0",
- "notes": "The \"What kind of work do you do?\" chooser is gone: every tool and panel is standard for everyone. Split view: right-click a tab and pick Swap sides. A file name only pops up when you point at it if it is cut short. The website's About box now shows the real version.",
+ "notes": "Split view: the blue box around the pane you are working in is gone. The pane is now shown by its tab only (blue line and bold name).",
  "files": {
   "index.html": "37718e56acb4a477ab525ecd4de6a7a5fcbb9da567976a2dfb241cc18a0d9711",
   "config.json": "ae2ca167ff35af4879d7a5e12308ea3e121e77a047e3e73b07ea208d4ce7dac7",
@@ -60,8 +60,8 @@
   "js/tips.js": "1b3c8a69af0e754427fe0e89c1663db2810653be3683671fc6020c3559728f6f",
   "js/toolbox.js": "2d091caf68e198ff44e5cb1e9dad251845edea9b9e3623ceddc12c1992a548e9",
   "js/toolgroups.js": "71e74117e07780800485b56eeeed752f4eb5d120116ce4f3987db70bf82aafdc",
-  "js/views.js": "c779e0faa2a02cb539c97a133097efd713191f0548ec77967f93af176f264b3c",
-  "js/workspace.js": "60061926e0d1ea5b105c8153bc6dc9a9f1881bb351acf10629f3fe78af5ae025",
+  "js/views.js": "31a323beba2dc9b1a61cd2fbc5000e9e291a51b527b2c638873a6bd44977e301",
+  "js/workspace.js": "95807243328e5158d7dc290fa2c5a2ff55356b3970062393667004494914fbdb",
   "img/icon-180.png": "2ed8b8fa65c3d9a44f30adcd39df1ebc3dd673d846d5fbadaf3e43e7a8db82ee",
   "img/icon-32.png": "0b42f6ee2ff38a3ec6eb32d837dd32da7e5d1c2e41f41b9da335de76d27333d4",
   "img/icon-512.png": "27800ebf7351b902204050570406f8c838e5ff9d410514014cb04ca170365fd9"

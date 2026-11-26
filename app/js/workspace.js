@@ -4,7 +4,7 @@
    spell check, auto-complete, status keys, Bluebeam-style keyboard shortcuts. */
 (function(){
 const WS_VER='1.4.0';   // the version the "What's new" list was last written for (not the app's version)
-const APP_VER='1.6.3';  // the app's version, written in by the release script: the website's About box showed WS_VER, so it said 1.4.0 for ever
+const APP_VER='1.6.4';  // the app's version, written in by the release script: the website's About box showed WS_VER, so it said 1.4.0 for ever
 const DEF_P={menu:true,crosshair:false,docDark:false,viewMode:false,rememberPos:true,reopenLast:false,showFiles:false,defLayout:'',lockFitWidth:false,
  reverseWheel:false,wheelSens:1,maxZoom:64,snapSens:9,snapColor:'#ff00ff',autoSize:true,popups:true,popOpacity:.95,thumbSize:150,thumbMarkups:true,thumbView:true,
  noLineWeights:false,replyBadges:true,shortcutSet:'bluebeam',statusKeys:{1:'Open',2:'In Progress',3:'Completed',4:'Accepted',5:'Rejected',6:'Field Verify'},

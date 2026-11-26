@@ -17,11 +17,13 @@ css.textContent=`
 #splitBox{flex:1;display:flex;min-height:0;min-width:0;position:relative}
 #splitBox.h{flex-direction:column}
 #mainCol{flex:1 1 0;display:flex;flex-direction:column;min-width:0;min-height:0;position:relative}
-#splitBox.on #mainCol::after{content:'';position:absolute;inset:0;border:2px solid var(--acc);pointer-events:none;z-index:6}
+/* split view: the pane you are working in is shown by its tab only (blue line, bright name); the other pane's tab is grey.
+   The blue box that went round the whole pane was taken out (1.6.4). */
+#splitBox.on #tabBar .dtab.on{border-top:3px solid var(--acc);font-weight:600}
 #splitBox.on .vw2{cursor:default}
 .tabBar2{display:flex;align-items:stretch;gap:1px;overflow-x:auto;scrollbar-width:thin;flex:1;min-width:0;min-height:30px}
 #tabBar.dragin,.tabBar2.dragin{box-shadow:inset 0 0 0 2px var(--acc)}
-#splitBox.on .vw2wrap .tabBar2 .dtab.on{border-top-color:var(--mut)}
+#splitBox.on .vw2wrap .tabBar2 .dtab.on{border-top-color:var(--mut);color:var(--mut)}
 body.dl .p2bar{background:#1f1f1f}
 #mainPane{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;position:relative}
 #mainPane.ruled{padding:20px 0 0 20px}
